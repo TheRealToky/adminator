@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { extractErrorMessage } from '@/api/client';
 import type { Paginated } from '@/api/types';
@@ -14,6 +15,7 @@ interface Options<T> {
 
 export function useCrudList<T extends { id: string }>({ queryKey, fetcher, deleter, pageSize = 25 }: Options<T>) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
@@ -29,10 +31,10 @@ export function useCrudList<T extends { id: string }>({ queryKey, fetcher, delet
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleter!(id),
     onSuccess: () => {
-      toast.success('Deleted.');
+      toast.success(t('common.deleted'));
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err) => toast.error(extractErrorMessage(err, 'Could not delete.')),
+    onError: (err) => toast.error(extractErrorMessage(err, t('common.deleteFailed'))),
   });
 
   return {

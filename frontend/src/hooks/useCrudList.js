@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { extractErrorMessage } from '@/api/client';
 export function useCrudList({ queryKey, fetcher, deleter, pageSize = 25 }) {
     const queryClient = useQueryClient();
+    const { t } = useTranslation();
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const params = { page, page_size: pageSize };
@@ -17,10 +19,10 @@ export function useCrudList({ queryKey, fetcher, deleter, pageSize = 25 }) {
     const deleteMutation = useMutation({
         mutationFn: (id) => deleter(id),
         onSuccess: () => {
-            toast.success('Deleted.');
+            toast.success(t('common.deleted'));
             queryClient.invalidateQueries({ queryKey });
         },
-        onError: (err) => toast.error(extractErrorMessage(err, 'Could not delete.')),
+        onError: (err) => toast.error(extractErrorMessage(err, t('common.deleteFailed'))),
     });
     return {
         page, setPage,

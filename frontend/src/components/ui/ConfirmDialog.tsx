@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 import { Modal } from './Modal';
 
 interface Props {
@@ -13,29 +15,30 @@ interface Props {
 
 export function ConfirmDialog({
   open, onClose, onConfirm,
-  title = 'Are you sure?',
+  title,
   message,
-  confirmLabel = 'Confirm',
+  confirmLabel,
   loading,
   destructive = true,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={title}
+      title={title ?? t('common.areYouSure')}
       size="sm"
       footer={
         <>
           <button onClick={onClose} className="btn-secondary" disabled={loading}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={onConfirm}
             className={destructive ? 'btn-danger' : 'btn-primary'}
             disabled={loading}
           >
-            {loading ? 'Working...' : confirmLabel}
+            {loading ? t('common.working') : (confirmLabel ?? t('common.confirm'))}
           </button>
         </>
       }

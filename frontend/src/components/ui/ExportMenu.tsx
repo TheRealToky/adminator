@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, FileSpreadsheet, FileText, Braces, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { extractErrorMessage } from '@/api/client';
 import {
@@ -18,25 +19,22 @@ interface Props<T> {
   disabled?: boolean;
 }
 
-const FORMATS: Array<{
-  key: ExportFormat;
-  label: string;
-  hint: string;
-  icon: typeof FileSpreadsheet;
-}> = [
-  { key: 'xlsx', label: 'Excel (.xlsx)', hint: 'Spreadsheet', icon: FileSpreadsheet },
-  { key: 'csv', label: 'CSV (.csv)', hint: 'Comma-separated', icon: FileText },
-  { key: 'json', label: 'JSON (.json)', hint: 'Raw data', icon: Braces },
-];
+const FORMAT_KEYS: ExportFormat[] = ['xlsx', 'csv', 'json'];
+const FORMAT_ICONS: Record<ExportFormat, typeof FileSpreadsheet> = {
+  xlsx: FileSpreadsheet,
+  csv: FileText,
+  json: Braces,
+};
 
 export function ExportMenu<T>({
   filename,
   columns,
   fetchRows,
-  label = 'Export',
+  label,
   size = 'md',
   disabled = false,
 }: Props<T>) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<ExportFormat | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -64,13 +62,16 @@ export function ExportMenu<T>({
     try {
       const rows = await fetchRows();
       if (rows.length === 0) {
-        toast.message('Nothing to export', { description: 'There are no rows to include.' });
+        toast.message(t('export.nothingTitle'), { description: t('export.nothingDescription') });
         return;
       }
       exportRows(rows, columns, format, filename);
-      toast.success(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'} as ${format.toUpperCase()}.`);
+      toast.success(t('export.successOther', {
+        count: rows.length,
+        format: format.toUpperCase(),
+      }));
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Could not export data.'));
+      toast.error(extractErrorMessage(err, t('export.failed')));
     } finally {
       setBusy(null);
     }
@@ -78,6 +79,7 @@ export function ExportMenu<T>({
 
   const btnPadding = size === 'sm' ? 'px-2 py-1 text-xs' : '';
   const iconSize = size === 'sm' ? 12 : 14;
+  const exportLabel = label ?? t('export.label');
 
   return (
     <div ref={containerRef} className="relative inline-block">
@@ -90,7 +92,7 @@ export function ExportMenu<T>({
         aria-expanded={open}
       >
         {busy ? <Loader2 size={iconSize} className="animate-spin" /> : <Download size={iconSize} />}
-        {busy ? `Exporting ${busy.toUpperCase()}…` : label}
+        {busy ? t('export.exporting', { format: busy.toUpperCase() }) : exportLabel}
         <ChevronDown size={iconSize} className="opacity-60" />
       </button>
 
@@ -99,21 +101,24 @@ export function ExportMenu<T>({
           role="menu"
           className="absolute right-0 z-30 mt-1 w-56 rounded-md border border-slate-200 bg-white shadow-lg py-1"
         >
-          {FORMATS.map(({ key, label: optLabel, hint, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              role="menuitem"
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
-              onClick={() => handlePick(key)}
-            >
-              <Icon size={16} className="text-slate-500" />
-              <span className="flex-1">
-                <span className="block font-medium text-slate-800">{optLabel}</span>
-                <span className="block text-xs text-slate-500">{hint}</span>
-              </span>
-            </button>
-          ))}
+          {FORMAT_KEYS.map((key) => {
+            const Icon = FORMAT_ICONS[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                role="menuitem"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+                onClick={() => handlePick(key)}
+              >
+                <Icon size={16} className="text-slate-500" />
+                <span className="flex-1">
+                  <span className="block font-medium text-slate-800">{t(`export.formats.${key}`)}</span>
+                  <span className="block text-xs text-slate-500">{t(`export.formats.${key}Hint`)}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

@@ -4,6 +4,7 @@ import {
   Plus, Pencil, Trash2, Layers, X, ChefHat, PlayCircle, History, Sliders,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { catalog } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -29,23 +30,26 @@ import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/lib/for
 type Tab = 'materials' | 'batches' | 'movements';
 
 export function ProcessedMaterialsPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('materials');
+
+  const tabs: { key: Tab; label: string; icon: typeof ChefHat }[] = [
+    { key: 'materials', label: t('processedMaterials.tabs.materials'), icon: ChefHat },
+    { key: 'batches', label: t('processedMaterials.tabs.batches'), icon: PlayCircle },
+    { key: 'movements', label: t('processedMaterials.tabs.movements'), icon: History },
+  ];
 
   return (
     <>
       <PageHeader
-        title="Processed materials"
-        subtitle="Pre-made components — pizza dough, batters, ganache, pastry cream — produced from raw materials and used in product recipes."
+        title={t('processedMaterials.title')}
+        subtitle={t('processedMaterials.subtitle')}
       />
 
       <div className="card">
         <div className="card-header gap-2 flex-wrap">
           <div className="flex gap-1">
-            {([
-              { key: 'materials', label: 'Materials', icon: ChefHat },
-              { key: 'batches', label: 'Batches', icon: PlayCircle },
-              { key: 'movements', label: 'Movements', icon: History },
-            ] as { key: Tab; label: string; icon: typeof ChefHat }[]).map(({ key, label, icon: Icon }) => (
+            {tabs.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
@@ -75,6 +79,7 @@ const emptyMaterial: Partial<ProcessedMaterial> = {
 
 function MaterialsTab() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<ProcessedMaterial>({
     queryKey: ['processed-materials'],
     fetcher: (p) => processedMaterials.list(p),
@@ -99,7 +104,7 @@ function MaterialsTab() {
     mutationFn: () =>
       editing ? processedMaterials.update(editing.id, form) : processedMaterials.create(form),
     onSuccess: () => {
-      toast.success(editing ? 'Updated.' : 'Created.');
+      toast.success(editing ? t('processedMaterials.list.updated') : t('processedMaterials.list.created'));
       qc.invalidateQueries({ queryKey: ['processed-materials'] });
       setOpen(false);
     },
@@ -110,47 +115,49 @@ function MaterialsTab() {
   function openEdit(row: ProcessedMaterial) { setEditing(row); setForm(row); setOpen(true); }
 
   const columns: Column<ProcessedMaterial>[] = [
-    { key: 'sku', header: 'SKU', render: (r) => <span className="font-mono text-xs">{r.sku}</span> },
-    { key: 'name', header: 'Name', render: (r) => <span className="font-medium">{r.name}</span> },
-    { key: 'unit', header: 'Unit', render: (r) => r.unit },
-    { key: 'yield', header: 'Yield/batch', align: 'right', render: (r) => (
+    { key: 'sku', header: t('processedMaterials.columns.sku'), render: (r) => <span className="font-mono text-xs">{r.sku}</span> },
+    { key: 'name', header: t('processedMaterials.columns.name'), render: (r) => <span className="font-medium">{r.name}</span> },
+    { key: 'unit', header: t('processedMaterials.columns.unit'), render: (r) => r.unit },
+    { key: 'yield', header: t('processedMaterials.columns.yieldBatch'), align: 'right', render: (r) => (
       `${formatNumber(r.yield_per_batch)} ${r.unit}`
     )},
-    { key: 'cost', header: 'Cost/unit', align: 'right', render: (r) => formatMoney(r.unit_cost) },
-    { key: 'stock', header: 'On hand', align: 'right', render: (r) => (
+    { key: 'cost', header: t('processedMaterials.columns.costUnit'), align: 'right', render: (r) => formatMoney(r.unit_cost) },
+    { key: 'stock', header: t('processedMaterials.columns.onHand'), align: 'right', render: (r) => (
       <span className={r.is_low ? 'text-red-600 font-semibold' : 'font-medium'}>
         {formatNumber(r.stock_quantity, 1)} {r.unit}
       </span>
     )},
     { key: 'status', header: '', render: (r) => (
-      r.is_low ? <span className="badge-red">Low</span> : <span className="badge-green">OK</span>
+      r.is_low
+        ? <span className="badge-red">{t('inventory.badges.low')}</span>
+        : <span className="badge-green">{t('inventory.badges.ok')}</span>
     )},
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
         <button
           className="btn-ghost p-1.5 text-emerald-700"
-          title="Produce batch"
+          title={t('processedMaterials.actions.produceBatch')}
           onClick={(e) => { e.stopPropagation(); setProduceFor(r); }}
         >
           <PlayCircle size={14} />
         </button>
         <button
           className="btn-ghost p-1.5 text-brand-700"
-          title="Recipe (ingredients)"
+          title={t('processedMaterials.actions.recipe')}
           onClick={(e) => { e.stopPropagation(); setRecipeFor(r); }}
         >
           <Layers size={14} />
         </button>
         <button
           className="btn-ghost p-1.5 text-blue-700"
-          title="Used in products"
+          title={t('processedMaterials.actions.usedInProducts')}
           onClick={(e) => { e.stopPropagation(); setUsageFor(r); }}
         >
           <ChefHat size={14} />
         </button>
         <button
           className="btn-ghost p-1.5"
-          title="Adjust stock"
+          title={t('processedMaterials.actions.adjustStock')}
           onClick={(e) => { e.stopPropagation(); setAdjustFor(r); }}
         >
           <Sliders size={14} />
@@ -166,24 +173,24 @@ function MaterialsTab() {
   ];
 
   const exportColumns: ExportColumn<ProcessedMaterial>[] = [
-    { key: 'sku', header: 'SKU', value: (r) => r.sku },
-    { key: 'name', header: 'Name', value: (r) => r.name },
-    { key: 'unit', header: 'Unit', value: (r) => r.unit },
-    { key: 'yield_per_batch', header: 'Yield/batch', value: (r) => Number(r.yield_per_batch) },
-    { key: 'unit_cost', header: 'Unit cost', value: (r) => Number(r.unit_cost) },
-    { key: 'overhead_pct', header: 'Overhead %', value: (r) => Number(r.overhead_pct) },
-    { key: 'shelf_life_hours', header: 'Shelf life (h)', value: (r) => r.shelf_life_hours },
-    { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => Number(r.reorder_threshold) },
-    { key: 'stock_quantity', header: 'On hand', value: (r) => Number(r.stock_quantity) },
-    { key: 'is_low', header: 'Low stock', value: (r) => (r.is_low ? 'yes' : 'no') },
-    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
-    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+    { key: 'sku', header: t('processedMaterials.exportCols.sku'), value: (r) => r.sku },
+    { key: 'name', header: t('processedMaterials.exportCols.name'), value: (r) => r.name },
+    { key: 'unit', header: t('processedMaterials.exportCols.unit'), value: (r) => r.unit },
+    { key: 'yield_per_batch', header: t('processedMaterials.exportCols.yieldPerBatch'), value: (r) => Number(r.yield_per_batch) },
+    { key: 'unit_cost', header: t('processedMaterials.exportCols.unitCost'), value: (r) => Number(r.unit_cost) },
+    { key: 'overhead_pct', header: t('processedMaterials.exportCols.overheadPct'), value: (r) => Number(r.overhead_pct) },
+    { key: 'shelf_life_hours', header: t('processedMaterials.exportCols.shelfLifeHours'), value: (r) => r.shelf_life_hours },
+    { key: 'reorder_threshold', header: t('processedMaterials.exportCols.reorderThreshold'), value: (r) => Number(r.reorder_threshold) },
+    { key: 'stock_quantity', header: t('processedMaterials.exportCols.onHand'), value: (r) => Number(r.stock_quantity) },
+    { key: 'is_low', header: t('processedMaterials.exportCols.lowStock'), value: (r) => (r.is_low ? t('common.yes') : t('common.no')) },
+    { key: 'is_active', header: t('processedMaterials.exportCols.active'), value: (r) => (r.is_active ? t('common.yes') : t('common.no')) },
+    { key: 'notes', header: t('processedMaterials.exportCols.notes'), value: (r) => r.notes },
   ];
 
   return (
     <>
       <div className="px-5 pt-3 flex items-center justify-between gap-2">
-        <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search processed materials…" />
+        <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('processedMaterials.list.searchPlaceholder')} />
         <div className="flex items-center gap-2">
           <ExportMenu
             filename="processed-materials"
@@ -193,7 +200,7 @@ function MaterialsTab() {
               list.search ? { search: list.search } : {},
             )}
           />
-          <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New material</button>
+          <button onClick={openCreate} className="btn-primary"><Plus size={16} /> {t('processedMaterials.list.new')}</button>
         </div>
       </div>
       <DataTable
@@ -203,8 +210,8 @@ function MaterialsTab() {
         rowKey={(r) => r.id}
         empty={<EmptyState
           icon={ChefHat}
-          title="No processed materials yet"
-          description='Add things like "pizza dough" or "ganache" — pre-made components used inside product recipes.'
+          title={t('processedMaterials.list.emptyTitle')}
+          description={t('processedMaterials.list.emptyDescription')}
         />}
       />
       {list.data && (
@@ -215,60 +222,60 @@ function MaterialsTab() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={editing ? `Edit ${editing.name}` : 'New processed material'}
+        title={editing ? t('processedMaterials.list.editModal', { name: editing.name }) : t('processedMaterials.list.newModal')}
         size="lg"
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
               disabled={!form.name || !form.sku || save.isPending}
               onClick={() => save.mutate()}
             >
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </button>
           </>
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="label">SKU</label>
+            <label className="label">{t('processedMaterials.fields.sku')}</label>
             <input className="input font-mono" value={form.sku ?? ''} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
           </div>
           <div>
-            <label className="label">Name</label>
+            <label className="label">{t('processedMaterials.fields.name')}</label>
             <input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div>
-            <label className="label">Unit</label>
+            <label className="label">{t('processedMaterials.fields.unit')}</label>
             <select className="input" value={form.unit ?? 'g'} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
               {units.data?.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Yield per batch</label>
+            <label className="label">{t('processedMaterials.fields.yieldPerBatch')}</label>
             <input type="number" step="0.01" className="input" value={form.yield_per_batch ?? '1'}
               onChange={(e) => setForm({ ...form, yield_per_batch: e.target.value })} />
           </div>
           <div>
-            <label className="label">Shelf life (hours)</label>
+            <label className="label">{t('processedMaterials.fields.shelfLifeHours')}</label>
             <input type="number" className="input" value={form.shelf_life_hours ?? 24}
               onChange={(e) => setForm({ ...form, shelf_life_hours: Number(e.target.value) })} />
           </div>
           <div>
-            <label className="label">Reorder threshold</label>
+            <label className="label">{t('processedMaterials.fields.reorderThreshold')}</label>
             <input type="number" step="0.01" className="input" value={form.reorder_threshold ?? '0'}
               onChange={(e) => setForm({ ...form, reorder_threshold: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Notes</label>
+            <label className="label">{t('processedMaterials.fields.notes')}</label>
             <textarea className="input" rows={2} value={form.notes ?? ''}
               onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
           <div className="sm:col-span-2 flex items-center gap-2">
             <input id="active-pm" type="checkbox" checked={form.is_active ?? true}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-            <label htmlFor="active-pm" className="text-sm">Active</label>
+            <label htmlFor="active-pm" className="text-sm">{t('processedMaterials.fields.active')}</label>
           </div>
         </div>
       </Modal>
@@ -281,9 +288,9 @@ function MaterialsTab() {
       <ConfirmDialog
         open={!!toDelete}
         onClose={() => setToDelete(null)}
-        title="Delete processed material?"
-        message={`Remove "${toDelete?.name}"? Linked recipes and product usages will also be affected.`}
-        confirmLabel="Delete"
+        title={t('processedMaterials.list.deleteTitle')}
+        message={t('processedMaterials.list.deleteMessage', { name: toDelete?.name ?? '' })}
+        confirmLabel={t('common.delete')}
         loading={list.deleteMutation.isPending}
         onConfirm={() => {
           if (!toDelete) return;
@@ -301,6 +308,7 @@ function RecipeModal({
   open, material: materialProp, onClose,
 }: { open: boolean; material: ProcessedMaterial | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const rawMaterials = useQuery({
     queryKey: ['materials-all'],
     queryFn: () => catalog.rawMaterials.list({ page_size: 500 }),
@@ -352,7 +360,7 @@ function RecipeModal({
       quantity: newQty,
     }),
     onSuccess: () => {
-      toast.success('Recipe line added.');
+      toast.success(t('processedMaterials.recipe.added'));
       invalidateAll();
       setNewIngredient(''); setNewQty('');
     },
@@ -360,11 +368,11 @@ function RecipeModal({
   });
   const remove = useMutation({
     mutationFn: (id: string) => processedMaterials.recipes.remove(id),
-    onSuccess: () => { toast.success('Removed.'); invalidateAll(); },
+    onSuccess: () => { toast.success(t('common.removed')); invalidateAll(); },
   });
   const saveOverhead = useMutation({
     mutationFn: (pct: string) => processedMaterials.update(material!.id, { overhead_pct: pct }),
-    onSuccess: () => { toast.success('Overhead updated.'); invalidateAll(); },
+    onSuccess: () => { toast.success(t('processedMaterials.recipe.overheadSaved')); invalidateAll(); },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
@@ -392,30 +400,36 @@ function RecipeModal({
 
   return (
     <Modal open={open} onClose={onClose}
-      title={`Recipe — ${material?.name ?? ''}`}
+      title={t('processedMaterials.recipe.title', { name: material?.name ?? '' })}
       size="lg"
     >
       <p className="text-sm text-slate-500 mb-4">
-        Quantities below produce <strong>one batch</strong> (yield = {formatNumber(material?.yield_per_batch ?? 0)} {material?.unit}).
-        Ingredients can be raw materials or other processed materials.
+        <Trans
+          i18nKey="processedMaterials.recipe.lead"
+          values={{
+            yield: formatNumber(material?.yield_per_batch ?? 0),
+            unit: material?.unit ?? '',
+          }}
+          components={{ 1: <strong /> }}
+        />
       </p>
       <div className="grid grid-cols-12 gap-2 mb-2 px-3 text-xs uppercase tracking-wider text-slate-500">
-        <span className="col-span-6">Ingredient</span>
-        <span className="col-span-3 text-right">Quantity</span>
-        <span className="col-span-2 text-right">Cost</span>
+        <span className="col-span-6">{t('processedMaterials.recipe.ingredient')}</span>
+        <span className="col-span-3 text-right">{t('processedMaterials.recipe.quantity')}</span>
+        <span className="col-span-2 text-right">{t('processedMaterials.recipe.cost')}</span>
         <span className="col-span-1" />
       </div>
       <ul className="divide-y divide-slate-100 border border-slate-200 rounded-md">
         {rows.length === 0 && (
-          <li className="px-3 py-6 text-center text-sm text-slate-400">No ingredients in recipe yet.</li>
+          <li className="px-3 py-6 text-center text-sm text-slate-400">{t('processedMaterials.recipe.empty')}</li>
         )}
         {rows.map((it) => (
           <li key={it.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-center">
             <span className="col-span-6 text-sm flex items-center gap-2">
               {it.ingredientName}
               {it.isSub && (
-                <span className="badge-gray text-[10px]" title="Processed material (sub-recipe)">
-                  processed
+                <span className="badge-gray text-[10px]" title={t('processedMaterials.recipe.processedTip')}>
+                  {t('processedMaterials.recipe.processedBadge')}
                 </span>
               )}
             </span>
@@ -437,8 +451,8 @@ function RecipeModal({
 
       <div className="mt-4 flex gap-1 text-xs">
         {([
-          { key: 'raw' as const, label: 'Raw material' },
-          { key: 'processed' as const, label: 'Processed material' },
+          { key: 'raw' as const, label: t('processedMaterials.recipe.kindRaw') },
+          { key: 'processed' as const, label: t('processedMaterials.recipe.kindProcessed') },
         ]).map(({ key, label }) => (
           <button
             key={key}
@@ -455,14 +469,14 @@ function RecipeModal({
       <div className="grid grid-cols-12 gap-2 mt-2 items-end">
         <div className="col-span-7">
           <label className="label">
-            Add {kind === 'raw' ? 'raw material' : 'processed material'}
+            {kind === 'raw' ? t('processedMaterials.recipe.addRaw') : t('processedMaterials.recipe.addProcessed')}
           </label>
           <select
             className="input"
             value={newIngredient}
             onChange={(e) => setNewIngredient(e.target.value)}
           >
-            <option value="">— Select —</option>
+            <option value="">{t('common.select')}</option>
             {kind === 'raw'
               ? rawMaterials.data?.results.map((m) => (
                   <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>
@@ -475,7 +489,7 @@ function RecipeModal({
           </select>
         </div>
         <div className="col-span-4">
-          <label className="label">Quantity / batch</label>
+          <label className="label">{t('processedMaterials.recipe.qtyPerBatch')}</label>
           <input type="number" step="0.0001" className="input"
             value={newQty} onChange={(e) => setNewQty(e.target.value)} />
         </div>
@@ -483,7 +497,7 @@ function RecipeModal({
           className="col-span-1 btn-primary px-2 py-2"
           disabled={!newIngredient || !newQty || add.isPending}
           onClick={() => add.mutate()}
-          aria-label="Add"
+          aria-label={t('common.add')}
         >
           <Plus size={16} />
         </button>
@@ -491,12 +505,12 @@ function RecipeModal({
 
       <div className="mt-6 border-t border-slate-200 pt-4 space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-600">Ingredient subtotal (per batch)</span>
+          <span className="text-slate-600">{t('processedMaterials.recipe.ingredientSubtotal')}</span>
           <span className="font-medium tabular-nums">{formatMoney(ingredientCost)}</span>
         </div>
         <div className="grid grid-cols-12 gap-2 items-center">
           <label className="col-span-6 text-sm text-slate-600" htmlFor="pm-overhead-pct">
-            Variable overhead estimate (%)
+            {t('processedMaterials.recipe.overheadLabel')}
           </label>
           <div className="col-span-3">
             <input
@@ -522,7 +536,7 @@ function RecipeModal({
               onClick={() => setOverheadPct(material?.overhead_pct ?? '0')}
               disabled={saveOverhead.isPending}
             >
-              Reset
+              {t('common.reset')}
             </button>
             <button
               type="button"
@@ -530,19 +544,27 @@ function RecipeModal({
               onClick={() => saveOverhead.mutate(overheadPct)}
               disabled={saveOverhead.isPending}
             >
-              {saveOverhead.isPending ? 'Saving…' : 'Save overhead'}
+              {saveOverhead.isPending ? t('common.saving') : t('processedMaterials.recipe.saveOverhead')}
             </button>
           </div>
         )}
         <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-sm">
-          <span className="font-medium text-slate-800">Total batch cost</span>
+          <span className="font-medium text-slate-800">{t('processedMaterials.recipe.totalBatchCost')}</span>
           <span className="font-semibold text-slate-900 tabular-nums">{formatMoney(totalBatchCost)}</span>
         </div>
         <div className="flex items-center justify-between text-xs text-slate-500">
           <span>
-            Per unit ({formatNumber(material?.yield_per_batch ?? 0)} {material?.unit}/batch)
+            {t('processedMaterials.recipe.perUnit', {
+              yield: formatNumber(material?.yield_per_batch ?? 0),
+              unit: material?.unit ?? '',
+            })}
           </span>
-          <span className="tabular-nums">{formatMoney(perUnitCost)} / {material?.unit ?? 'unit'}</span>
+          <span className="tabular-nums">
+            {t('processedMaterials.recipe.perUnitValue', {
+              cost: formatMoney(perUnitCost),
+              unit: material?.unit ?? 'unit',
+            })}
+          </span>
         </div>
       </div>
     </Modal>
@@ -554,6 +576,7 @@ function UsageModal({
   open, material, onClose,
 }: { open: boolean; material: ProcessedMaterial | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const products = useQuery({
     queryKey: ['products-all'],
     queryFn: () => catalog.products.list({ page_size: 500 }),
@@ -570,7 +593,7 @@ function UsageModal({
       quantity: qty,
     }),
     onSuccess: () => {
-      toast.success('Usage added.');
+      toast.success(t('processedMaterials.usage.added'));
       qc.invalidateQueries({ queryKey: ['processed-materials'] });
       setProductId(''); setQty('');
     },
@@ -579,22 +602,22 @@ function UsageModal({
   const remove = useMutation({
     mutationFn: (id: string) => processedMaterials.usages.remove(id),
     onSuccess: () => {
-      toast.success('Removed.');
+      toast.success(t('common.removed'));
       qc.invalidateQueries({ queryKey: ['processed-materials'] });
     },
   });
 
   return (
     <Modal open={open} onClose={onClose}
-      title={`Used in products — ${material?.name ?? ''}`}
+      title={t('processedMaterials.usage.title', { name: material?.name ?? '' })}
       size="lg"
     >
       <p className="text-sm text-slate-500 mb-4">
-        Quantity per <strong>one unit</strong> of the product. Stock is decremented automatically when a production run is recorded.
+        <Trans i18nKey="processedMaterials.usage.lead" components={{ 1: <strong /> }} />
       </p>
       <ul className="divide-y divide-slate-100 border border-slate-200 rounded-md">
         {items.length === 0 && (
-          <li className="px-3 py-6 text-center text-sm text-slate-400">Not used in any product yet.</li>
+          <li className="px-3 py-6 text-center text-sm text-slate-400">{t('processedMaterials.usage.empty')}</li>
         )}
         {items.map((it) => (
           <li key={it.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-center">
@@ -614,16 +637,16 @@ function UsageModal({
 
       <div className="grid grid-cols-12 gap-2 mt-4 items-end">
         <div className="col-span-7">
-          <label className="label">Add product</label>
+          <label className="label">{t('processedMaterials.usage.addProduct')}</label>
           <select className="input" value={productId} onChange={(e) => setProductId(e.target.value)}>
-            <option value="">— Select —</option>
+            <option value="">{t('common.select')}</option>
             {products.data?.results.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </div>
         <div className="col-span-4">
-          <label className="label">Qty per unit</label>
+          <label className="label">{t('processedMaterials.usage.qtyPerUnit')}</label>
           <input type="number" step="0.0001" className="input"
             value={qty} onChange={(e) => setQty(e.target.value)} />
         </div>
@@ -631,7 +654,7 @@ function UsageModal({
           className="col-span-1 btn-primary px-2 py-2"
           disabled={!productId || !qty || add.isPending}
           onClick={() => add.mutate()}
-          aria-label="Add"
+          aria-label={t('common.add')}
         >
           <Plus size={16} />
         </button>
@@ -643,6 +666,7 @@ function UsageModal({
 // ── Adjust stock ──────────────────────────────────────────────────────────
 function AdjustModal({ material, onClose }: { material: ProcessedMaterial | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const [delta, setDelta] = useState('');
   const [note, setNote] = useState('');
 
@@ -653,7 +677,7 @@ function AdjustModal({ material, onClose }: { material: ProcessedMaterial | null
       note,
     }),
     onSuccess: () => {
-      toast.success('Adjustment recorded.');
+      toast.success(t('processedMaterials.adjust.recorded'));
       qc.invalidateQueries({ queryKey: ['processed-materials'] });
       qc.invalidateQueries({ queryKey: ['processed-movements'] });
       onClose(); setDelta(''); setNote('');
@@ -665,33 +689,38 @@ function AdjustModal({ material, onClose }: { material: ProcessedMaterial | null
   return (
     <Modal
       open={!!material} onClose={onClose}
-      title={`Adjust: ${material.name}`}
+      title={t('processedMaterials.adjust.title', { name: material.name })}
       size="sm"
       footer={
         <>
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
           <button
             className="btn-primary"
             disabled={!delta || Number(delta) === 0 || mutate.isPending}
             onClick={() => mutate.mutate()}
           >
-            {mutate.isPending ? 'Saving…' : 'Apply'}
+            {mutate.isPending ? t('common.saving') : t('common.apply')}
           </button>
         </>
       }
     >
-      <p className="text-sm text-slate-500 mb-3">
-        Current on-hand: <strong>{formatNumber(material.stock_quantity, 2)} {material.unit}</strong>.
-        Positive to add, negative to remove (e.g. waste).
-      </p>
+      <p
+        className="text-sm text-slate-500 mb-3"
+        dangerouslySetInnerHTML={{
+          __html: t('processedMaterials.adjust.currentOnHand', {
+            qty: formatNumber(material.stock_quantity, 2),
+            unit: material.unit,
+          }),
+        }}
+      />
       <div className="space-y-3">
         <div>
-          <label className="label">Delta ({material.unit})</label>
+          <label className="label">{t('processedMaterials.adjust.delta', { unit: material.unit })}</label>
           <input autoFocus type="number" step="0.01" className="input"
             value={delta} onChange={(e) => setDelta(e.target.value)} />
         </div>
         <div>
-          <label className="label">Note (optional)</label>
+          <label className="label">{t('common.noteOptional')}</label>
           <textarea className="input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </div>
@@ -702,6 +731,7 @@ function AdjustModal({ material, onClose }: { material: ProcessedMaterial | null
 // ── Produce a batch ───────────────────────────────────────────────────────
 function ProduceModal({ material, onClose }: { material: ProcessedMaterial | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const [batches, setBatches] = useState('1');
   const [scheduledFor, setScheduledFor] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
@@ -714,7 +744,10 @@ function ProduceModal({ material, onClose }: { material: ProcessedMaterial | nul
       notes,
     }),
     onSuccess: (batch) => {
-      toast.success(`Produced ${formatNumber(batch.quantity_produced, 1)} ${material?.unit}.`);
+      toast.success(t('processedMaterials.produce.produced', {
+        qty: formatNumber(batch.quantity_produced, 1),
+        unit: material?.unit ?? '',
+      }));
       qc.invalidateQueries({ queryKey: ['processed-materials'] });
       qc.invalidateQueries({ queryKey: ['processed-batches'] });
       qc.invalidateQueries({ queryKey: ['processed-movements'] });
@@ -732,38 +765,44 @@ function ProduceModal({ material, onClose }: { material: ProcessedMaterial | nul
   return (
     <Modal
       open={!!material} onClose={onClose}
-      title={`Produce batch — ${material.name}`}
+      title={t('processedMaterials.produce.title', { name: material.name })}
       size="sm"
       footer={
         <>
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
           <button
             className="btn-primary"
             disabled={!batches || Number(batches) <= 0 || produce.isPending}
             onClick={() => produce.mutate()}
           >
-            {produce.isPending ? 'Producing…' : 'Produce'}
+            {produce.isPending ? t('processedMaterials.produce.producing') : t('processedMaterials.produce.produce')}
           </button>
         </>
       }
     >
-      <p className="text-sm text-slate-500 mb-3">
-        Each batch yields <strong>{formatNumber(material.yield_per_batch)} {material.unit}</strong>.
-        Will produce <strong>{formatNumber(projected, 0)} {material.unit}</strong> and consume raw materials per recipe.
-      </p>
+      <p
+        className="text-sm text-slate-500 mb-3"
+        dangerouslySetInnerHTML={{
+          __html: t('processedMaterials.produce.lead', {
+            yield: formatNumber(material.yield_per_batch),
+            unit: material.unit,
+            projected: formatNumber(projected, 0),
+          }),
+        }}
+      />
       <div className="space-y-3">
         <div>
-          <label className="label">Batches</label>
+          <label className="label">{t('processedMaterials.produce.batches')}</label>
           <input autoFocus type="number" step="0.01" min="0.01" className="input"
             value={batches} onChange={(e) => setBatches(e.target.value)} />
         </div>
         <div>
-          <label className="label">Scheduled for</label>
+          <label className="label">{t('processedMaterials.produce.scheduledFor')}</label>
           <input type="date" className="input"
             value={scheduledFor} onChange={(e) => setScheduledFor(e.target.value)} />
         </div>
         <div>
-          <label className="label">Notes</label>
+          <label className="label">{t('processedMaterials.produce.notes')}</label>
           <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </div>
@@ -773,6 +812,7 @@ function ProduceModal({ material, onClose }: { material: ProcessedMaterial | nul
 
 // ── Batches tab ───────────────────────────────────────────────────────────
 function BatchesTab() {
+  const { t } = useTranslation();
   const list = useCrudList<ProcessedMaterialBatch>({
     queryKey: ['processed-batches'],
     fetcher: (p) => processedMaterials.batches.list(p),
@@ -780,39 +820,39 @@ function BatchesTab() {
   });
 
   const columns: Column<ProcessedMaterialBatch>[] = [
-    { key: 'sched', header: 'Scheduled', render: (r) => formatDate(r.scheduled_for) },
-    { key: 'material', header: 'Material', render: (r) => (
+    { key: 'sched', header: t('processedMaterials.batches.columns.scheduled'), render: (r) => formatDate(r.scheduled_for) },
+    { key: 'material', header: t('processedMaterials.batches.columns.material'), render: (r) => (
       <div>
         <p className="font-medium">{r.processed_material_name}</p>
         <p className="text-xs text-slate-500 font-mono">{r.processed_material_sku}</p>
       </div>
     )},
-    { key: 'batches', header: 'Batches', align: 'right', render: (r) => formatNumber(r.batches, 2) },
-    { key: 'qty', header: 'Produced', align: 'right', render: (r) => (
+    { key: 'batches', header: t('processedMaterials.batches.columns.batches'), align: 'right', render: (r) => formatNumber(r.batches, 2) },
+    { key: 'qty', header: t('processedMaterials.batches.columns.produced'), align: 'right', render: (r) => (
       `${formatNumber(r.quantity_produced, 1)} ${r.processed_material_unit}`
     )},
-    { key: 'cost', header: 'Cost', align: 'right', render: (r) => formatMoney(r.cost) },
-    { key: 'when', header: 'Completed', render: (r) => r.completed_at ? formatDateTime(r.completed_at) : '—' },
-    { key: 'by', header: 'By', render: (r) => r.created_by_name ?? '—' },
+    { key: 'cost', header: t('processedMaterials.batches.columns.cost'), align: 'right', render: (r) => formatMoney(r.cost) },
+    { key: 'when', header: t('processedMaterials.batches.columns.completed'), render: (r) => r.completed_at ? formatDateTime(r.completed_at) : '—' },
+    { key: 'by', header: t('processedMaterials.batches.columns.by'), render: (r) => r.created_by_name ?? '—' },
   ];
 
   const exportColumns: ExportColumn<ProcessedMaterialBatch>[] = [
-    { key: 'scheduled_for', header: 'Scheduled', value: (r) => r.scheduled_for },
-    { key: 'completed_at', header: 'Completed', value: (r) => r.completed_at ?? '' },
-    { key: 'processed_material_sku', header: 'Material SKU', value: (r) => r.processed_material_sku },
-    { key: 'processed_material_name', header: 'Material', value: (r) => r.processed_material_name },
-    { key: 'batches', header: 'Batches', value: (r) => Number(r.batches) },
-    { key: 'quantity_produced', header: 'Produced', value: (r) => Number(r.quantity_produced) },
-    { key: 'processed_material_unit', header: 'Unit', value: (r) => r.processed_material_unit },
-    { key: 'cost', header: 'Cost', value: (r) => Number(r.cost) },
-    { key: 'created_by', header: 'By', value: (r) => r.created_by_name ?? '' },
-    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+    { key: 'scheduled_for', header: t('processedMaterials.batches.exportCols.scheduled'), value: (r) => r.scheduled_for },
+    { key: 'completed_at', header: t('processedMaterials.batches.exportCols.completed'), value: (r) => r.completed_at ?? '' },
+    { key: 'processed_material_sku', header: t('processedMaterials.batches.exportCols.materialSku'), value: (r) => r.processed_material_sku },
+    { key: 'processed_material_name', header: t('processedMaterials.batches.exportCols.material'), value: (r) => r.processed_material_name },
+    { key: 'batches', header: t('processedMaterials.batches.exportCols.batches'), value: (r) => Number(r.batches) },
+    { key: 'quantity_produced', header: t('processedMaterials.batches.exportCols.produced'), value: (r) => Number(r.quantity_produced) },
+    { key: 'processed_material_unit', header: t('processedMaterials.batches.exportCols.unit'), value: (r) => r.processed_material_unit },
+    { key: 'cost', header: t('processedMaterials.batches.exportCols.cost'), value: (r) => Number(r.cost) },
+    { key: 'created_by', header: t('processedMaterials.batches.exportCols.by'), value: (r) => r.created_by_name ?? '' },
+    { key: 'notes', header: t('processedMaterials.batches.exportCols.notes'), value: (r) => r.notes },
   ];
 
   return (
     <>
       <div className="px-5 pt-3 flex items-center justify-between gap-2">
-        <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search batches…" />
+        <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('processedMaterials.batches.searchPlaceholder')} />
         <ExportMenu
           filename="processed-batches"
           columns={exportColumns}
@@ -829,8 +869,8 @@ function BatchesTab() {
         rowKey={(r) => r.id}
         empty={<EmptyState
           icon={PlayCircle}
-          title="No batches recorded"
-          description="Use the ▶ button on a material to record one."
+          title={t('processedMaterials.batches.emptyTitle')}
+          description={t('processedMaterials.batches.emptyDescription')}
         />}
       />
       {list.data && (
@@ -842,38 +882,39 @@ function BatchesTab() {
 
 // ── Movements tab ─────────────────────────────────────────────────────────
 function MovementsTab() {
+  const { t } = useTranslation();
   const list = useCrudList<ProcessedMaterialStockMovement>({
     queryKey: ['processed-movements'],
     fetcher: (p) => processedMaterials.movements.list(p),
   });
 
   const columns: Column<ProcessedMaterialStockMovement>[] = [
-    { key: 'when', header: 'When', render: (r) => formatDateTime(r.created_at) },
-    { key: 'item', header: 'Material', render: (r) => <span className="font-medium">{r.item_name}</span> },
-    { key: 'reason', header: 'Reason', render: (r) => <span className="badge-gray">{r.reason_display}</span> },
-    { key: 'delta', header: 'Δ', align: 'right', render: (r) => (
+    { key: 'when', header: t('processedMaterials.movements.columns.when'), render: (r) => formatDateTime(r.created_at) },
+    { key: 'item', header: t('processedMaterials.movements.columns.material'), render: (r) => <span className="font-medium">{r.item_name}</span> },
+    { key: 'reason', header: t('processedMaterials.movements.columns.reason'), render: (r) => <span className="badge-gray">{r.reason_display}</span> },
+    { key: 'delta', header: t('processedMaterials.movements.columns.delta'), align: 'right', render: (r) => (
       <span className={Number(r.quantity_delta) >= 0 ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold'}>
         {Number(r.quantity_delta) > 0 ? '+' : ''}{formatNumber(r.quantity_delta, 2)} {r.item_unit}
       </span>
     )},
-    { key: 'balance', header: 'After', align: 'right', render: (r) => (
+    { key: 'balance', header: t('processedMaterials.movements.columns.after'), align: 'right', render: (r) => (
       `${formatNumber(r.balance_after, 2)} ${r.item_unit}`
     )},
-    { key: 'ref', header: 'Ref', render: (r) => <span className="font-mono text-xs">{r.reference || '—'}</span> },
-    { key: 'who', header: 'By', render: (r) => r.created_by_name ?? '—' },
+    { key: 'ref', header: t('processedMaterials.movements.columns.ref'), render: (r) => <span className="font-mono text-xs">{r.reference || '—'}</span> },
+    { key: 'who', header: t('processedMaterials.movements.columns.by'), render: (r) => r.created_by_name ?? '—' },
   ];
 
   const exportColumns: ExportColumn<ProcessedMaterialStockMovement>[] = [
-    { key: 'created_at', header: 'When', value: (r) => r.created_at },
-    { key: 'item_sku', header: 'SKU', value: (r) => r.item_sku },
-    { key: 'item_name', header: 'Material', value: (r) => r.item_name },
-    { key: 'item_unit', header: 'Unit', value: (r) => r.item_unit },
-    { key: 'reason', header: 'Reason', value: (r) => r.reason_display },
-    { key: 'quantity_delta', header: 'Quantity delta', value: (r) => Number(r.quantity_delta) },
-    { key: 'balance_after', header: 'Balance after', value: (r) => Number(r.balance_after) },
-    { key: 'reference', header: 'Reference', value: (r) => r.reference },
-    { key: 'note', header: 'Note', value: (r) => r.note },
-    { key: 'created_by', header: 'By', value: (r) => r.created_by_name ?? '' },
+    { key: 'created_at', header: t('processedMaterials.movements.exportCols.when'), value: (r) => r.created_at },
+    { key: 'item_sku', header: t('processedMaterials.movements.exportCols.sku'), value: (r) => r.item_sku },
+    { key: 'item_name', header: t('processedMaterials.movements.exportCols.material'), value: (r) => r.item_name },
+    { key: 'item_unit', header: t('processedMaterials.movements.exportCols.unit'), value: (r) => r.item_unit },
+    { key: 'reason', header: t('processedMaterials.movements.exportCols.reason'), value: (r) => r.reason_display },
+    { key: 'quantity_delta', header: t('processedMaterials.movements.exportCols.quantityDelta'), value: (r) => Number(r.quantity_delta) },
+    { key: 'balance_after', header: t('processedMaterials.movements.exportCols.balanceAfter'), value: (r) => Number(r.balance_after) },
+    { key: 'reference', header: t('processedMaterials.movements.exportCols.reference'), value: (r) => r.reference },
+    { key: 'note', header: t('processedMaterials.movements.exportCols.note'), value: (r) => r.note },
+    { key: 'created_by', header: t('processedMaterials.movements.exportCols.by'), value: (r) => r.created_by_name ?? '' },
   ];
 
   return (
@@ -890,7 +931,7 @@ function MovementsTab() {
         data={list.data?.results}
         loading={list.isLoading}
         rowKey={(r) => r.id}
-        empty={<EmptyState icon={History} title="No movements yet" />}
+        empty={<EmptyState icon={History} title={t('processedMaterials.movements.emptyTitle')} />}
       />
       {list.data && (
         <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />

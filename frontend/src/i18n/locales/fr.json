@@ -1,0 +1,878 @@
+{
+  "common": {
+    "appName": "Adminator",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "delete": "Supprimer",
+    "deleted": "Supprimé.",
+    "deleteFailed": "Suppression impossible.",
+    "confirm": "Confirmer",
+    "working": "En cours...",
+    "areYouSure": "Êtes-vous sûr ?",
+    "loading": "Chargement…",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "remove": "Supprimer",
+    "removed": "Supprimé.",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "off": "Désactivé",
+    "ok": "OK",
+    "yes": "oui",
+    "no": "non",
+    "none": "— Aucun —",
+    "select": "— Sélectionner —",
+    "search": "Rechercher…",
+    "searchClear": "Effacer la recherche",
+    "apply": "Appliquer",
+    "reset": "Réinitialiser",
+    "previousPage": "Page précédente",
+    "nextPage": "Page suivante",
+    "pagination": {
+      "showing": "Affichage de {{from}}–{{to}} sur {{total}}",
+      "page": "Page {{page}} sur {{totalPages}}"
+    },
+    "optional": "optionnel",
+    "noteOptional": "Note (optionnel)",
+    "notes": "Notes",
+    "description": "Description",
+    "name": "Nom",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "address": "Adresse",
+    "status": "Statut",
+    "type": "Type",
+    "unit": "Unité",
+    "quantity": "Quantité",
+    "amount": "Montant",
+    "date": "Date",
+    "when": "Quand",
+    "by": "Par",
+    "ref": "Réf",
+    "reference": "Référence",
+    "category": "Catégorie",
+    "saved": "Enregistré.",
+    "updated": "Mis à jour."
+  },
+  "sidebar": {
+    "dashboard": "Tableau de bord",
+    "sections": {
+      "operations": "Opérations",
+      "catalog": "Catalogue",
+      "finance": "Finance",
+      "admin": "Administration"
+    },
+    "sales": "Ventes",
+    "production": "Production",
+    "inventory": "Inventaire",
+    "products": "Produits",
+    "processedMaterials": "Matières transformées",
+    "rawMaterials": "Matières premières",
+    "suppliers": "Fournisseurs",
+    "expenses": "Dépenses",
+    "invoices": "Factures",
+    "budgets": "Budgets",
+    "staff": "Personnel"
+  },
+  "topbar": {
+    "profile": "Profil",
+    "signOut": "Déconnexion",
+    "language": "Langue",
+    "languages": {
+      "en": "English",
+      "fr": "Français"
+    }
+  },
+  "login": {
+    "subtitle": "Connectez-vous pour continuer",
+    "password": "Mot de passe",
+    "signIn": "Se connecter",
+    "signingIn": "Connexion…",
+    "invalidCredentials": "Identifiants invalides.",
+    "demoSeed": "Démo : admin@adminator.local / admin12345"
+  },
+  "export": {
+    "label": "Exporter",
+    "exporting": "Export {{format}}…",
+    "nothingTitle": "Rien à exporter",
+    "nothingDescription": "Il n'y a aucune ligne à inclure.",
+    "failed": "Impossible d'exporter les données.",
+    "successOne": "{{count}} ligne exportée en {{format}}.",
+    "successOther": "{{count}} lignes exportées en {{format}}.",
+    "formats": {
+      "xlsx": "Excel (.xlsx)",
+      "xlsxHint": "Tableur",
+      "csv": "CSV (.csv)",
+      "csvHint": "Valeurs séparées par des virgules",
+      "json": "JSON (.json)",
+      "jsonHint": "Données brutes"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "subtitle": "Aperçu opérationnel",
+    "ranges": {
+      "last7": "7 derniers jours",
+      "last30": "30 derniers jours",
+      "last90": "90 derniers jours"
+    },
+    "kpi": {
+      "revenue": "Chiffre d'affaires",
+      "vsPrev": "vs période précédente",
+      "netProfit": "Bénéfice net",
+      "cogsOpex": "Coût des ventes {{cogs}} · Charges {{opex}}",
+      "receipts": "Tickets",
+      "avgTicket": "Ticket moyen {{value}}",
+      "inventoryOnHand": "Stock disponible",
+      "finishedRaw": "Produits finis {{finished}} · Brut {{raw}}",
+      "overdueInvoices": "Factures en retard",
+      "invoicesCount_one": "{{count}} facture",
+      "invoicesCount_other": "{{count}} factures"
+    },
+    "revenueProfit": "Chiffre d'affaires & bénéfice",
+    "days": "{{count}} jours",
+    "revenueLabel": "Chiffre d'affaires",
+    "profitLabel": "Bénéfice",
+    "paymentMix": "Répartition des paiements",
+    "busyHours": "Heures de pointe",
+    "busyHoursHint": "Tickets par heure de la journée",
+    "receiptsLabel": "Tickets",
+    "topProducts": "Meilleurs produits",
+    "byRevenue": "Par chiffre d'affaires",
+    "soldSuffix": "vendus",
+    "noData": "Aucune donnée dans cette période",
+    "lowStock": "Stock faible",
+    "lowStockOf": "{{low}} sur {{total}}",
+    "stocksHealthy": "Tous les stocks sont sains ✓",
+    "kindProduct": "Produit",
+    "kindRawMaterial": "Matière première",
+    "productionByDay": "Production par jour",
+    "productionSummary": "{{units}} unités · {{cost}}",
+    "unitsLabel": "Unités",
+    "expensesByCategory": "Dépenses par catégorie"
+  },
+  "products": {
+    "title": "Produits",
+    "subtitle": "Produits finis vendus aux clients",
+    "new": "Nouveau produit",
+    "edit": "Modifier le produit",
+    "searchPlaceholder": "Rechercher des produits…",
+    "emptyTitle": "Aucun produit pour le moment",
+    "emptyDescription": "Ajoutez ce que vous vendez pour suivre les ventes et les recettes.",
+    "deleteTitle": "Supprimer le produit ?",
+    "deleteMessage": "Supprimer « {{name}} » ? L'historique des ventes sera conservé, mais le produit sera retiré.",
+    "created": "Produit créé.",
+    "updated": "Produit mis à jour.",
+    "categoryCreated": "Catégorie « {{name}} » créée.",
+    "columns": {
+      "sku": "SKU",
+      "name": "Nom",
+      "category": "Catégorie",
+      "price": "Prix",
+      "cost": "Coût",
+      "margin": "Marge"
+    },
+    "fields": {
+      "sku": "SKU",
+      "name": "Nom",
+      "category": "Catégorie",
+      "newCategory": "+ Nouvelle catégorie",
+      "newCategoryNamePlaceholder": "Nom de la catégorie",
+      "noCategoriesHint": "Aucune catégorie — cliquez sur « + Nouvelle catégorie » pour en ajouter une.",
+      "unit": "Unité",
+      "sellingPrice": "Prix de vente",
+      "reorderThreshold": "Seuil de réapprovisionnement",
+      "description": "Description",
+      "active": "Actif"
+    },
+    "recipe": {
+      "title": "Recette — {{name}}",
+      "lead": "Les quantités correspondent à chaque ingrédient consommé pour produire <strong>une unité</strong> de ce produit.",
+      "material": "Matière",
+      "quantity": "Quantité",
+      "cost": "Coût",
+      "raw": "Brute",
+      "processed": "Transformée",
+      "addMaterial": "Ajouter une matière",
+      "rawMaterials": "Matières premières",
+      "processedMaterials": "Matières transformées",
+      "empty": "Aucun élément de recette pour le moment.",
+      "added": "Élément de recette ajouté.",
+      "ingredientSubtotal": "Sous-total des ingrédients",
+      "overheadLabel": "Frais généraux variables estimés (%)",
+      "overheadSaved": "Frais généraux mis à jour.",
+      "saveOverhead": "Enregistrer les frais",
+      "totalCost": "Coût total de production / unité"
+    },
+    "exportCols": {
+      "sku": "SKU",
+      "name": "Nom",
+      "category": "Catégorie",
+      "unit": "Unité",
+      "sellingPrice": "Prix de vente",
+      "productionCost": "Coût de production",
+      "margin": "Marge",
+      "overheadPct": "Frais généraux %",
+      "reorderThreshold": "Seuil de réapprovisionnement",
+      "active": "Actif",
+      "description": "Description"
+    }
+  },
+  "rawMaterials": {
+    "title": "Matières premières",
+    "subtitle": "Ingrédients et fournitures consommés par la production",
+    "new": "Nouvelle matière",
+    "edit": "Modifier la matière première",
+    "newTitle": "Nouvelle matière première",
+    "searchPlaceholder": "Rechercher par nom ou SKU…",
+    "emptyTitle": "Aucune matière première",
+    "emptyDescription": "Ajoutez les ingrédients utilisés en production.",
+    "deleteTitle": "Supprimer la matière ?",
+    "deleteMessage": "Supprimer « {{name}} » ? Les recettes liées seront également affectées.",
+    "created": "Matière créée.",
+    "updated": "Matière mise à jour.",
+    "received": "Reçu {{qty}} {{unit}}.",
+    "columns": {
+      "sku": "SKU",
+      "name": "Nom",
+      "unit": "Unité",
+      "cost": "Coût / unité",
+      "reorder": "Réappro ≤",
+      "supplier": "Fournisseur"
+    },
+    "fields": {
+      "sku": "SKU",
+      "name": "Nom",
+      "unit": "Unité",
+      "costPerUnit": "Coût unitaire",
+      "reorderThreshold": "Seuil de réapprovisionnement",
+      "preferredSupplier": "Fournisseur préféré",
+      "active": "Actif"
+    },
+    "receive": {
+      "title": "Réception : {{name}}",
+      "qtyLabel": "Quantité reçue ({{unit}})",
+      "hint": "Cela enregistre une entrée en stock et met à jour le stock actuel.",
+      "record": "Enregistrer",
+      "recording": "Enregistrement…",
+      "receiveStock": "Réceptionner du stock"
+    },
+    "exportCols": {
+      "sku": "SKU",
+      "name": "Nom",
+      "unit": "Unité",
+      "unitCost": "Coût unitaire",
+      "reorderThreshold": "Seuil de réapprovisionnement",
+      "preferredSupplier": "Fournisseur préféré",
+      "active": "Actif"
+    }
+  },
+  "suppliers": {
+    "title": "Fournisseurs",
+    "subtitle": "Vendeurs de matières premières et autres fournitures",
+    "new": "Nouveau fournisseur",
+    "edit": "Modifier le fournisseur",
+    "searchPlaceholder": "Rechercher des fournisseurs…",
+    "emptyTitle": "Aucun fournisseur",
+    "emptyDescription": "Ajoutez les vendeurs auprès desquels vous achetez.",
+    "deleteTitle": "Supprimer le fournisseur ?",
+    "deleteMessage": "Supprimer définitivement « {{name}} » ? Cette action est irréversible.",
+    "created": "Fournisseur créé.",
+    "updated": "Fournisseur mis à jour.",
+    "columns": {
+      "name": "Nom",
+      "contact": "Contact",
+      "phone": "Téléphone",
+      "email": "E-mail",
+      "status": "Statut"
+    },
+    "fields": {
+      "companyName": "Nom de l'entreprise",
+      "contact": "Personne à contacter",
+      "phone": "Téléphone",
+      "email": "E-mail",
+      "address": "Adresse",
+      "notes": "Notes",
+      "active": "Actif"
+    },
+    "exportCols": {
+      "name": "Nom",
+      "contact": "Contact",
+      "phone": "Téléphone",
+      "email": "E-mail",
+      "address": "Adresse",
+      "notes": "Notes",
+      "active": "Actif"
+    }
+  },
+  "inventory": {
+    "title": "Inventaire",
+    "subtitle": "Stock disponible des produits, matières premières et matières transformées",
+    "tabs": {
+      "all": "Tout le stock",
+      "low": "Stock faible",
+      "processed": "Transformées",
+      "movements": "Mouvements"
+    },
+    "search": {
+      "all": "Rechercher des articles…",
+      "processed": "Rechercher des matières transformées…"
+    },
+    "columns": {
+      "item": "Article",
+      "type": "Type",
+      "onHand": "Disponible",
+      "reorder": "Réappro ≤",
+      "status": "Statut",
+      "when": "Quand",
+      "reason": "Raison",
+      "delta": "Δ",
+      "after": "Après",
+      "ref": "Réf",
+      "by": "Par",
+      "material": "Matière"
+    },
+    "badges": {
+      "product": "Produit",
+      "material": "Matière",
+      "processed": "Transformée",
+      "low": "Faible",
+      "ok": "OK"
+    },
+    "actions": {
+      "adjust": "Ajuster"
+    },
+    "empty": {
+      "stock": "Aucun stock",
+      "stockDescription": "Les entrées en stock apparaissent à mesure que vous créez des produits et des matières.",
+      "low": "Aucun article sous le seuil",
+      "lowDescription": "Tous les stocks sont sains.",
+      "movements": "Aucun mouvement de stock",
+      "processed": "Aucune matière transformée en stock",
+      "processedDescription": "Gérez les matières transformées via Catalogue → Matières transformées."
+    },
+    "adjust": {
+      "title": "Ajuster : {{name}}",
+      "currentOnHand": "Disponible actuel : <strong>{{qty}} {{unit}}</strong>. Saisissez un nombre positif pour ajouter du stock, négatif pour en retirer (ex. perte).",
+      "delta": "Delta ({{unit}})",
+      "recorded": "Ajustement enregistré."
+    },
+    "exportCols": {
+      "sku": "SKU",
+      "item": "Article",
+      "type": "Type",
+      "unit": "Unité",
+      "onHand": "Disponible",
+      "reorderThreshold": "Seuil de réapprovisionnement",
+      "lowStock": "Stock faible",
+      "when": "Quand",
+      "reason": "Raison",
+      "quantityDelta": "Variation de quantité",
+      "balanceAfter": "Solde après",
+      "reference": "Référence",
+      "note": "Note",
+      "by": "Par"
+    }
+  },
+  "production": {
+    "title": "Production",
+    "subtitle": "Cuissons et préparations — consomme automatiquement les matières premières",
+    "new": "Nouvelle production",
+    "newTitle": "Nouvelle production",
+    "searchPlaceholder": "Rechercher par produit…",
+    "emptyTitle": "Aucune production",
+    "emptyDescription": "Enregistrez ce que vous produisez pour garder le stock et les coûts à jour.",
+    "recorded": "Production enregistrée.",
+    "deleteTitle": "Supprimer cette production ?",
+    "deleteMessage": "La production sera supprimée mais les mouvements de stock liés sont conservés pour audit.",
+    "columns": {
+      "scheduled": "Planifié",
+      "product": "Produit",
+      "quantity": "Quantité",
+      "cost": "Coût",
+      "status": "Statut",
+      "completed": "Terminé",
+      "by": "Par"
+    },
+    "fields": {
+      "product": "Produit",
+      "quantity": "Quantité",
+      "scheduledFor": "Planifié pour",
+      "notesOptional": "Notes (optionnel)"
+    },
+    "footer": {
+      "record": "Enregistrer",
+      "recording": "Enregistrement…",
+      "hint": "Enregistrer une production déduit chaque ingrédient du stock de matières premières selon la recette du produit."
+    },
+    "statuses": {
+      "completed": "terminé",
+      "planned": "planifié"
+    },
+    "exportCols": {
+      "scheduled": "Planifié",
+      "completed": "Terminé",
+      "productSku": "SKU produit",
+      "product": "Produit",
+      "quantity": "Quantité",
+      "cost": "Coût",
+      "status": "Statut",
+      "by": "Par",
+      "notes": "Notes"
+    }
+  },
+  "sales": {
+    "title": "Ventes",
+    "subtitle": "Enregistrez les tickets ; le stock et le bénéfice se mettent à jour automatiquement.",
+    "new": "Nouvelle vente",
+    "searchPlaceholder": "Rechercher par ticket, client…",
+    "emptyTitle": "Aucune vente enregistrée",
+    "deleteTitle": "Supprimer cette vente ?",
+    "deleteMessage": "Le ticket sera supprimé définitivement.",
+    "recorded": "Ticket {{number}} enregistré.",
+    "columns": {
+      "when": "Quand",
+      "receipt": "Ticket",
+      "customer": "Client",
+      "payment": "Paiement",
+      "channel": "Canal",
+      "total": "Total",
+      "profit": "Bénéfice"
+    },
+    "cart": {
+      "addProductPlaceholder": "— Ajouter un produit —",
+      "empty": "Le panier est vide",
+      "qty": "Qté",
+      "unitPrice": "Prix unitaire",
+      "lineTotal": "Total ligne : {{value}}"
+    },
+    "fields": {
+      "paymentMethod": "Mode de paiement",
+      "channel": "Canal",
+      "discount": "Remise",
+      "customerName": "Nom du client (optionnel)",
+      "customerPhone": "Téléphone client (optionnel)",
+      "notes": "Notes"
+    },
+    "footer": {
+      "subtotal": "Sous-total {{value}}",
+      "discount": "remise {{value}}",
+      "total": "Total {{value}}",
+      "record": "Enregistrer la vente",
+      "recording": "Enregistrement…"
+    },
+    "details": {
+      "receipt": "Ticket {{number}}",
+      "when": "Quand :",
+      "payment": "Paiement :",
+      "channel": "Canal :",
+      "servedBy": "Servi par :",
+      "customer": "Client :",
+      "phone": "Téléphone :",
+      "product": "Produit",
+      "qty": "Qté",
+      "unit": "Unité",
+      "total": "Total",
+      "subtotal": "Sous-total :",
+      "discount": "Remise :",
+      "totalLabel": "Total :",
+      "profit": "Bénéfice :"
+    },
+    "exportCols": {
+      "when": "Quand",
+      "receipt": "Ticket",
+      "customer": "Client",
+      "phone": "Téléphone",
+      "paymentMethod": "Mode de paiement",
+      "channel": "Canal",
+      "items": "Articles",
+      "subtotal": "Sous-total",
+      "discount": "Remise",
+      "total": "Total",
+      "cogs": "Coût des ventes",
+      "profit": "Bénéfice",
+      "servedBy": "Servi par",
+      "notes": "Notes"
+    }
+  },
+  "expenses": {
+    "title": "Dépenses",
+    "subtitle": "Coûts d'exploitation par catégorie",
+    "tabs": {
+      "expenses": "dépenses",
+      "categories": "catégories"
+    },
+    "list": {
+      "new": "Enregistrer une dépense",
+      "searchPlaceholder": "Rechercher des dépenses…",
+      "emptyTitle": "Aucune dépense enregistrée",
+      "emptyDescription": "Suivez les coûts d'exploitation en temps réel.",
+      "deleteTitle": "Supprimer la dépense ?",
+      "deleteMessage": "Supprimer « {{title}} » ?",
+      "created": "Dépense enregistrée.",
+      "updated": "Dépense mise à jour.",
+      "categoryCreated": "Catégorie créée.",
+      "newModal": "Enregistrer une dépense",
+      "editModal": "Modifier la dépense"
+    },
+    "categories": {
+      "new": "Nouvelle catégorie",
+      "newModal": "Nouvelle catégorie",
+      "editModal": "Modifier la catégorie",
+      "searchPlaceholder": "Rechercher des catégories…",
+      "emptyTitle": "Aucune catégorie",
+      "deleteTitle": "Supprimer la catégorie ?",
+      "deleteMessage": "Supprimer « {{name}} » ?",
+      "created": "Catégorie créée.",
+      "updated": "Catégorie mise à jour."
+    },
+    "columns": {
+      "date": "Date",
+      "title": "Intitulé",
+      "category": "Catégorie",
+      "amount": "Montant",
+      "payment": "Paiement",
+      "supplier": "Fournisseur",
+      "name": "Nom",
+      "description": "Description",
+      "status": "Statut"
+    },
+    "fields": {
+      "title": "Intitulé",
+      "category": "Catégorie",
+      "new": "Nouveau",
+      "categoryNamePlaceholder": "Nom de la catégorie",
+      "noneYet": "— Aucune encore — cliquez + Nouveau —",
+      "amount": "Montant",
+      "date": "Date",
+      "paymentMethod": "Mode de paiement",
+      "paymentMethods": {
+        "cash": "Espèces",
+        "mobile_money": "Mobile Money",
+        "card": "Carte",
+        "bank_transfer": "Virement bancaire"
+      },
+      "supplierOptional": "Fournisseur (optionnel)",
+      "reference": "Référence / n° de reçu",
+      "notes": "Notes",
+      "name": "Nom",
+      "description": "Description"
+    },
+    "exportCols": {
+      "date": "Date",
+      "title": "Intitulé",
+      "category": "Catégorie",
+      "amount": "Montant",
+      "payment": "Paiement",
+      "supplier": "Fournisseur",
+      "reference": "Référence",
+      "recordedBy": "Enregistré par",
+      "notes": "Notes",
+      "name": "Nom",
+      "description": "Description",
+      "active": "Actif"
+    }
+  },
+  "invoices": {
+    "title": "Factures",
+    "subtitle": "Facturation sortante et suivi des paiements",
+    "new": "Nouvelle facture",
+    "newModal": "Nouvelle facture",
+    "editModal": "Modifier la facture",
+    "searchPlaceholder": "Rechercher des factures…",
+    "emptyTitle": "Aucune facture",
+    "created": "Facture créée.",
+    "updated": "Facture mise à jour.",
+    "paymentRecorded": "Paiement enregistré.",
+    "markedSent": "Marquée comme envoyée.",
+    "cancelled": "Annulée.",
+    "deleteTitle": "Supprimer la facture ?",
+    "deleteMessage": "Supprimer définitivement {{number}} ?",
+    "columns": {
+      "invoice": "Facture",
+      "customer": "Client",
+      "issued": "Émise",
+      "due": "Échéance",
+      "amount": "Montant",
+      "paid": "Payé",
+      "balance": "Solde",
+      "status": "Statut"
+    },
+    "actions": {
+      "markAsSent": "Marquer comme envoyée",
+      "recordPayment": "Enregistrer un paiement",
+      "cancel": "Annuler"
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "sent": "Envoyée",
+      "partially_paid": "Partiellement payée",
+      "paid": "Payée",
+      "overdue": "En retard",
+      "cancelled": "Annulée"
+    },
+    "fields": {
+      "invoiceNumber": "N° facture",
+      "status": "Statut",
+      "customerName": "Nom du client",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "issueDate": "Date d'émission",
+      "dueDate": "Date d'échéance",
+      "amount": "Montant",
+      "amountPaid": "Montant payé",
+      "description": "Description",
+      "notes": "Notes"
+    },
+    "payment": {
+      "title": "Enregistrer un paiement — {{number}}",
+      "outstanding": "Solde restant : <strong>{{amount}}</strong>.",
+      "amountReceived": "Montant reçu",
+      "record": "Enregistrer"
+    },
+    "exportCols": {
+      "invoiceNumber": "N° facture",
+      "customer": "Client",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "issued": "Émise",
+      "due": "Échéance",
+      "amount": "Montant",
+      "paid": "Payé",
+      "balance": "Solde",
+      "status": "Statut",
+      "overdue": "En retard",
+      "paidAt": "Payée le",
+      "description": "Description",
+      "notes": "Notes"
+    }
+  },
+  "budgets": {
+    "title": "Budgets",
+    "subtitle": "Plafonds de dépenses mensuels par catégorie",
+    "new": "Nouveau budget",
+    "newModal": "Nouveau budget",
+    "editModal": "Modifier le budget",
+    "emptyTitle": "Aucun budget défini",
+    "emptyDescription": "Définissez des plafonds mensuels pour surveiller les dépenses.",
+    "created": "Budget créé.",
+    "updated": "Budget mis à jour.",
+    "deleteTitle": "Supprimer le budget ?",
+    "deleteMessage": "Cela supprimera l'entrée de budget.",
+    "columns": {
+      "category": "Catégorie",
+      "month": "Mois",
+      "budgeted": "Budgété",
+      "notes": "Notes"
+    },
+    "fields": {
+      "category": "Catégorie",
+      "monthFirstDay": "Mois (1er jour)",
+      "amount": "Montant",
+      "notes": "Notes"
+    },
+    "exportCols": {
+      "category": "Catégorie",
+      "month": "Mois",
+      "budgeted": "Budgété",
+      "notes": "Notes"
+    }
+  },
+  "users": {
+    "title": "Personnel",
+    "subtitle": "Utilisateurs internes avec accès basé sur les rôles",
+    "new": "Nouvel utilisateur",
+    "newModal": "Nouvel utilisateur",
+    "editModal": "Modifier {{name}}",
+    "searchPlaceholder": "Rechercher par nom ou e-mail…",
+    "emptyTitle": "Aucun compte personnel",
+    "created": "Utilisateur créé.",
+    "updated": "Utilisateur mis à jour.",
+    "deleteTitle": "Supprimer l'utilisateur ?",
+    "deleteMessage": "Supprimer définitivement « {{name}} » ?",
+    "columns": {
+      "name": "Nom",
+      "phone": "Téléphone",
+      "role": "Rôle",
+      "status": "Statut",
+      "joined": "Inscrit le"
+    },
+    "actions": {
+      "activate": "Activer",
+      "deactivate": "Désactiver"
+    },
+    "fields": {
+      "fullName": "Nom complet",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "role": "Rôle",
+      "password": "Mot de passe",
+      "active": "Actif"
+    },
+    "exportCols": {
+      "name": "Nom",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "role": "Rôle",
+      "active": "Actif",
+      "joined": "Inscrit le"
+    }
+  },
+  "processedMaterials": {
+    "title": "Matières transformées",
+    "subtitle": "Composants préparés — pâte à pizza, appareils, ganache, crème pâtissière — produits à partir de matières premières et utilisés dans les recettes des produits.",
+    "tabs": {
+      "materials": "Matières",
+      "batches": "Lots",
+      "movements": "Mouvements"
+    },
+    "list": {
+      "new": "Nouvelle matière",
+      "newModal": "Nouvelle matière transformée",
+      "editModal": "Modifier {{name}}",
+      "searchPlaceholder": "Rechercher des matières transformées…",
+      "emptyTitle": "Aucune matière transformée",
+      "emptyDescription": "Ajoutez des éléments comme « pâte à pizza » ou « ganache » — composants préparés utilisés dans les recettes des produits.",
+      "created": "Créé.",
+      "updated": "Mis à jour.",
+      "deleteTitle": "Supprimer la matière transformée ?",
+      "deleteMessage": "Supprimer « {{name}} » ? Les recettes et utilisations liées seront également affectées."
+    },
+    "columns": {
+      "sku": "SKU",
+      "name": "Nom",
+      "unit": "Unité",
+      "yieldBatch": "Rendement/lot",
+      "costUnit": "Coût/unité",
+      "onHand": "Disponible"
+    },
+    "actions": {
+      "produceBatch": "Produire un lot",
+      "recipe": "Recette (ingrédients)",
+      "usedInProducts": "Utilisé dans les produits",
+      "adjustStock": "Ajuster le stock"
+    },
+    "fields": {
+      "sku": "SKU",
+      "name": "Nom",
+      "unit": "Unité",
+      "yieldPerBatch": "Rendement par lot",
+      "shelfLifeHours": "Durée de conservation (heures)",
+      "reorderThreshold": "Seuil de réapprovisionnement",
+      "notes": "Notes",
+      "active": "Actif"
+    },
+    "recipe": {
+      "title": "Recette — {{name}}",
+      "lead": "Les quantités ci-dessous produisent <strong>un lot</strong> (rendement = {{yield}} {{unit}}). Les ingrédients peuvent être des matières premières ou d'autres matières transformées.",
+      "ingredient": "Ingrédient",
+      "quantity": "Quantité",
+      "cost": "Coût",
+      "empty": "Aucun ingrédient dans la recette pour le moment.",
+      "processedBadge": "transformée",
+      "processedTip": "Matière transformée (sous-recette)",
+      "kindRaw": "Matière première",
+      "kindProcessed": "Matière transformée",
+      "addRaw": "Ajouter une matière première",
+      "addProcessed": "Ajouter une matière transformée",
+      "qtyPerBatch": "Quantité / lot",
+      "added": "Ligne de recette ajoutée.",
+      "ingredientSubtotal": "Sous-total des ingrédients (par lot)",
+      "overheadLabel": "Frais généraux variables estimés (%)",
+      "overheadSaved": "Frais généraux mis à jour.",
+      "saveOverhead": "Enregistrer les frais",
+      "totalBatchCost": "Coût total du lot",
+      "perUnit": "Par unité ({{yield}} {{unit}}/lot)",
+      "perUnitValue": "{{cost}} / {{unit}}"
+    },
+    "usage": {
+      "title": "Utilisé dans les produits — {{name}}",
+      "lead": "Quantité par <strong>une unité</strong> du produit. Le stock est déduit automatiquement lors de l'enregistrement d'une production.",
+      "empty": "Pas encore utilisé dans aucun produit.",
+      "addProduct": "Ajouter un produit",
+      "qtyPerUnit": "Qté par unité",
+      "added": "Utilisation ajoutée."
+    },
+    "adjust": {
+      "title": "Ajuster : {{name}}",
+      "currentOnHand": "Disponible actuel : <strong>{{qty}} {{unit}}</strong>. Positif pour ajouter, négatif pour retirer (ex. perte).",
+      "delta": "Delta ({{unit}})",
+      "recorded": "Ajustement enregistré."
+    },
+    "produce": {
+      "title": "Produire un lot — {{name}}",
+      "lead": "Chaque lot produit <strong>{{yield}} {{unit}}</strong>. Cela produira <strong>{{projected}} {{unit}}</strong> et consommera les matières premières selon la recette.",
+      "batches": "Lots",
+      "scheduledFor": "Planifié pour",
+      "notes": "Notes",
+      "produce": "Produire",
+      "producing": "Production…",
+      "produced": "Produit {{qty}} {{unit}}."
+    },
+    "batches": {
+      "searchPlaceholder": "Rechercher des lots…",
+      "emptyTitle": "Aucun lot enregistré",
+      "emptyDescription": "Utilisez le bouton ▶ sur une matière pour en enregistrer un.",
+      "columns": {
+        "scheduled": "Planifié",
+        "material": "Matière",
+        "batches": "Lots",
+        "produced": "Produit",
+        "cost": "Coût",
+        "completed": "Terminé",
+        "by": "Par"
+      },
+      "exportCols": {
+        "scheduled": "Planifié",
+        "completed": "Terminé",
+        "materialSku": "SKU matière",
+        "material": "Matière",
+        "batches": "Lots",
+        "produced": "Produit",
+        "unit": "Unité",
+        "cost": "Coût",
+        "by": "Par",
+        "notes": "Notes"
+      }
+    },
+    "movements": {
+      "emptyTitle": "Aucun mouvement",
+      "columns": {
+        "when": "Quand",
+        "material": "Matière",
+        "reason": "Raison",
+        "delta": "Δ",
+        "after": "Après",
+        "ref": "Réf",
+        "by": "Par"
+      },
+      "exportCols": {
+        "when": "Quand",
+        "sku": "SKU",
+        "material": "Matière",
+        "unit": "Unité",
+        "reason": "Raison",
+        "quantityDelta": "Variation de quantité",
+        "balanceAfter": "Solde après",
+        "reference": "Référence",
+        "note": "Note",
+        "by": "Par"
+      }
+    },
+    "exportCols": {
+      "sku": "SKU",
+      "name": "Nom",
+      "unit": "Unité",
+      "yieldPerBatch": "Rendement/lot",
+      "unitCost": "Coût unitaire",
+      "overheadPct": "Frais généraux %",
+      "shelfLifeHours": "Durée de conservation (h)",
+      "reorderThreshold": "Seuil de réapprovisionnement",
+      "onHand": "Disponible",
+      "lowStock": "Stock faible",
+      "active": "Actif",
+      "notes": "Notes"
+    }
+  }
+}

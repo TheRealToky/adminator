@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 
 import App from './App';
 import { AuthProvider } from './store/AuthContext';
+import './i18n';
 import './styles/index.css';
 
 const queryClient = new QueryClient({

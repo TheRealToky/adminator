@@ -1,8 +1,10 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 export function DataTable({ columns, data, loading, empty, rowKey, onRowClick }) {
+    const { t } = useTranslation();
     if (loading && !data) {
-        return (_jsxs("div", { className: "flex items-center justify-center py-16 text-slate-400", children: [_jsx(Loader2, { className: "animate-spin mr-2", size: 18 }), "Loading\u2026"] }));
+        return (_jsxs("div", { className: "flex items-center justify-center py-16 text-slate-400", children: [_jsx(Loader2, { className: "animate-spin mr-2", size: 18 }), t('common.loading')] }));
     }
     if (!data || data.length === 0) {
         return _jsx("div", { className: "py-12", children: empty });

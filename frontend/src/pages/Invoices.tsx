@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, FileText, CreditCard, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { finance } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -32,6 +33,7 @@ const emptyForm: Partial<Invoice> = {
 
 export function InvoicesPage() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<Invoice>({
     queryKey: ['invoices'],
     fetcher: (p) => finance.invoices.list(p),
@@ -54,7 +56,7 @@ export function InvoicesPage() {
     mutationFn: () =>
       editing ? finance.invoices.update(editing.id, form) : finance.invoices.create(form),
     onSuccess: () => {
-      toast.success(editing ? 'Invoice updated.' : 'Invoice created.');
+      toast.success(editing ? t('invoices.updated') : t('invoices.created'));
       qc.invalidateQueries({ queryKey: ['invoices'] });
       setOpen(false);
     },
@@ -64,7 +66,7 @@ export function InvoicesPage() {
   const recordPayment = useMutation({
     mutationFn: () => finance.invoices.recordPayment(paying!.id, Number(paymentAmount)),
     onSuccess: () => {
-      toast.success('Payment recorded.');
+      toast.success(t('invoices.paymentRecorded'));
       qc.invalidateQueries({ queryKey: ['invoices'] });
       setPaying(null); setPaymentAmount('');
     },
@@ -73,12 +75,12 @@ export function InvoicesPage() {
 
   const markSent = useMutation({
     mutationFn: (id: string) => finance.invoices.markSent(id),
-    onSuccess: () => { toast.success('Marked as sent.'); qc.invalidateQueries({ queryKey: ['invoices'] }); },
+    onSuccess: () => { toast.success(t('invoices.markedSent')); qc.invalidateQueries({ queryKey: ['invoices'] }); },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
   const cancel = useMutation({
     mutationFn: (id: string) => finance.invoices.cancel(id),
-    onSuccess: () => { toast.success('Cancelled.'); qc.invalidateQueries({ queryKey: ['invoices'] }); },
+    onSuccess: () => { toast.success(t('invoices.cancelled')); qc.invalidateQueries({ queryKey: ['invoices'] }); },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
@@ -90,34 +92,34 @@ export function InvoicesPage() {
   function openEdit(row: Invoice) { setEditing(row); setForm(row); setOpen(true); }
 
   const columns: Column<Invoice>[] = [
-    { key: 'inv', header: 'Invoice', render: (r) => <span className="font-mono text-xs">{r.invoice_number}</span> },
-    { key: 'cust', header: 'Customer', render: (r) => <span className="font-medium">{r.customer_name}</span> },
-    { key: 'issue', header: 'Issued', render: (r) => formatDate(r.issue_date) },
-    { key: 'due', header: 'Due', render: (r) => (
+    { key: 'inv', header: t('invoices.columns.invoice'), render: (r) => <span className="font-mono text-xs">{r.invoice_number}</span> },
+    { key: 'cust', header: t('invoices.columns.customer'), render: (r) => <span className="font-medium">{r.customer_name}</span> },
+    { key: 'issue', header: t('invoices.columns.issued'), render: (r) => formatDate(r.issue_date) },
+    { key: 'due', header: t('invoices.columns.due'), render: (r) => (
       <span className={r.is_overdue ? 'text-red-600 font-medium' : ''}>{formatDate(r.due_date)}</span>
     )},
-    { key: 'amount', header: 'Amount', align: 'right', render: (r) => formatMoney(r.amount) },
-    { key: 'paid', header: 'Paid', align: 'right', render: (r) => formatMoney(r.amount_paid) },
-    { key: 'balance', header: 'Balance', align: 'right', render: (r) => (
+    { key: 'amount', header: t('invoices.columns.amount'), align: 'right', render: (r) => formatMoney(r.amount) },
+    { key: 'paid', header: t('invoices.columns.paid'), align: 'right', render: (r) => formatMoney(r.amount_paid) },
+    { key: 'balance', header: t('invoices.columns.balance'), align: 'right', render: (r) => (
       <span className="font-semibold">{formatMoney(r.balance_due)}</span>
     )},
-    { key: 'status', header: 'Status', render: (r) => (
+    { key: 'status', header: t('invoices.columns.status'), render: (r) => (
       <span className={STATUS_CLASSES[r.status] ?? 'badge-gray'}>{r.status_display}</span>
     )},
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
         {r.status === 'draft' && (
-          <button className="btn-ghost p-1.5 text-blue-600" title="Mark as sent" onClick={(e) => { e.stopPropagation(); markSent.mutate(r.id); }}>
+          <button className="btn-ghost p-1.5 text-blue-600" title={t('invoices.actions.markAsSent')} onClick={(e) => { e.stopPropagation(); markSent.mutate(r.id); }}>
             <Send size={14} />
           </button>
         )}
         {!['paid', 'cancelled'].includes(r.status) && (
-          <button className="btn-ghost p-1.5 text-emerald-700" title="Record payment" onClick={(e) => { e.stopPropagation(); setPaying(r); setPaymentAmount(String(r.balance_due)); }}>
+          <button className="btn-ghost p-1.5 text-emerald-700" title={t('invoices.actions.recordPayment')} onClick={(e) => { e.stopPropagation(); setPaying(r); setPaymentAmount(String(r.balance_due)); }}>
             <CreditCard size={14} />
           </button>
         )}
         {!['paid', 'cancelled'].includes(r.status) && (
-          <button className="btn-ghost p-1.5 text-amber-700" title="Cancel" onClick={(e) => { e.stopPropagation(); cancel.mutate(r.id); }}>
+          <button className="btn-ghost p-1.5 text-amber-700" title={t('invoices.actions.cancel')} onClick={(e) => { e.stopPropagation(); cancel.mutate(r.id); }}>
             <XCircle size={14} />
           </button>
         )}
@@ -128,27 +130,27 @@ export function InvoicesPage() {
   ];
 
   const exportColumns: ExportColumn<Invoice>[] = [
-    { key: 'invoice_number', header: 'Invoice #', value: (r) => r.invoice_number },
-    { key: 'customer_name', header: 'Customer', value: (r) => r.customer_name },
-    { key: 'customer_email', header: 'Email', value: (r) => r.customer_email },
-    { key: 'customer_phone', header: 'Phone', value: (r) => r.customer_phone },
-    { key: 'issue_date', header: 'Issued', value: (r) => r.issue_date },
-    { key: 'due_date', header: 'Due', value: (r) => r.due_date },
-    { key: 'amount', header: 'Amount', value: (r) => Number(r.amount) },
-    { key: 'amount_paid', header: 'Paid', value: (r) => Number(r.amount_paid) },
-    { key: 'balance_due', header: 'Balance', value: (r) => Number(r.balance_due) },
-    { key: 'status', header: 'Status', value: (r) => r.status_display },
-    { key: 'is_overdue', header: 'Overdue', value: (r) => (r.is_overdue ? 'yes' : 'no') },
-    { key: 'paid_at', header: 'Paid at', value: (r) => r.paid_at ?? '' },
-    { key: 'description', header: 'Description', value: (r) => r.description },
-    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+    { key: 'invoice_number', header: t('invoices.exportCols.invoiceNumber'), value: (r) => r.invoice_number },
+    { key: 'customer_name', header: t('invoices.exportCols.customer'), value: (r) => r.customer_name },
+    { key: 'customer_email', header: t('invoices.exportCols.email'), value: (r) => r.customer_email },
+    { key: 'customer_phone', header: t('invoices.exportCols.phone'), value: (r) => r.customer_phone },
+    { key: 'issue_date', header: t('invoices.exportCols.issued'), value: (r) => r.issue_date },
+    { key: 'due_date', header: t('invoices.exportCols.due'), value: (r) => r.due_date },
+    { key: 'amount', header: t('invoices.exportCols.amount'), value: (r) => Number(r.amount) },
+    { key: 'amount_paid', header: t('invoices.exportCols.paid'), value: (r) => Number(r.amount_paid) },
+    { key: 'balance_due', header: t('invoices.exportCols.balance'), value: (r) => Number(r.balance_due) },
+    { key: 'status', header: t('invoices.exportCols.status'), value: (r) => r.status_display },
+    { key: 'is_overdue', header: t('invoices.exportCols.overdue'), value: (r) => (r.is_overdue ? t('common.yes') : t('common.no')) },
+    { key: 'paid_at', header: t('invoices.exportCols.paidAt'), value: (r) => r.paid_at ?? '' },
+    { key: 'description', header: t('invoices.exportCols.description'), value: (r) => r.description },
+    { key: 'notes', header: t('invoices.exportCols.notes'), value: (r) => r.notes },
   ];
 
   return (
     <>
       <PageHeader
-        title="Invoices"
-        subtitle="Outbound invoicing and payment follow-up"
+        title={t('invoices.title')}
+        subtitle={t('invoices.subtitle')}
         actions={
           <>
             <ExportMenu
@@ -159,17 +161,17 @@ export function InvoicesPage() {
                 list.search ? { search: list.search } : {},
               )}
             />
-            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New invoice</button>
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> {t('invoices.new')}</button>
           </>
         }
       />
 
       <div className="card">
         <div className="card-header">
-          <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search invoices…" />
+          <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('invoices.searchPlaceholder')} />
         </div>
         <DataTable columns={columns} data={list.data?.results} loading={list.isLoading} rowKey={(r) => r.id}
-          empty={<EmptyState icon={FileText} title="No invoices yet" />} />
+          empty={<EmptyState icon={FileText} title={t('invoices.emptyTitle')} />} />
         {list.data && (
           <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />
         )}
@@ -177,66 +179,66 @@ export function InvoicesPage() {
 
       <Modal
         open={open} onClose={() => setOpen(false)}
-        title={editing ? 'Edit invoice' : 'New invoice'} size="lg"
+        title={editing ? t('invoices.editModal') : t('invoices.newModal')} size="lg"
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button className="btn-primary" disabled={!form.customer_name || !form.invoice_number || save.isPending} onClick={() => save.mutate()}>
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </button>
           </>
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="label">Invoice #</label>
+            <label className="label">{t('invoices.fields.invoiceNumber')}</label>
             <input className="input font-mono" value={form.invoice_number ?? ''} onChange={(e) => setForm({ ...form, invoice_number: e.target.value })} />
           </div>
           <div>
-            <label className="label">Status</label>
+            <label className="label">{t('invoices.fields.status')}</label>
             <select className="input" value={form.status ?? 'draft'} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              <option value="draft">Draft</option>
-              <option value="sent">Sent</option>
-              <option value="partially_paid">Partially paid</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="draft">{t('invoices.statuses.draft')}</option>
+              <option value="sent">{t('invoices.statuses.sent')}</option>
+              <option value="partially_paid">{t('invoices.statuses.partially_paid')}</option>
+              <option value="paid">{t('invoices.statuses.paid')}</option>
+              <option value="overdue">{t('invoices.statuses.overdue')}</option>
+              <option value="cancelled">{t('invoices.statuses.cancelled')}</option>
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Customer name</label>
+            <label className="label">{t('invoices.fields.customerName')}</label>
             <input className="input" value={form.customer_name ?? ''} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
           </div>
           <div>
-            <label className="label">Email</label>
+            <label className="label">{t('invoices.fields.email')}</label>
             <input type="email" className="input" value={form.customer_email ?? ''} onChange={(e) => setForm({ ...form, customer_email: e.target.value })} />
           </div>
           <div>
-            <label className="label">Phone</label>
+            <label className="label">{t('invoices.fields.phone')}</label>
             <input className="input" value={form.customer_phone ?? ''} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} />
           </div>
           <div>
-            <label className="label">Issue date</label>
+            <label className="label">{t('invoices.fields.issueDate')}</label>
             <input type="date" className="input" value={form.issue_date ?? ''} onChange={(e) => setForm({ ...form, issue_date: e.target.value })} />
           </div>
           <div>
-            <label className="label">Due date</label>
+            <label className="label">{t('invoices.fields.dueDate')}</label>
             <input type="date" className="input" value={form.due_date ?? ''} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
           </div>
           <div>
-            <label className="label">Amount</label>
+            <label className="label">{t('invoices.fields.amount')}</label>
             <input type="number" step="0.01" className="input" value={form.amount ?? '0'} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
           </div>
           <div>
-            <label className="label">Amount paid</label>
+            <label className="label">{t('invoices.fields.amountPaid')}</label>
             <input type="number" step="0.01" className="input" value={form.amount_paid ?? '0'} onChange={(e) => setForm({ ...form, amount_paid: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Description</label>
+            <label className="label">{t('invoices.fields.description')}</label>
             <textarea className="input" rows={2} value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Notes</label>
+            <label className="label">{t('invoices.fields.notes')}</label>
             <textarea className="input" rows={2} value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
         </div>
@@ -244,26 +246,30 @@ export function InvoicesPage() {
 
       <Modal
         open={!!paying} onClose={() => setPaying(null)}
-        title={`Record payment — ${paying?.invoice_number ?? ''}`}
+        title={t('invoices.payment.title', { number: paying?.invoice_number ?? '' })}
         size="sm"
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setPaying(null)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setPaying(null)}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
               disabled={!paymentAmount || Number(paymentAmount) <= 0 || recordPayment.isPending}
               onClick={() => recordPayment.mutate()}
             >
-              {recordPayment.isPending ? 'Saving…' : 'Record'}
+              {recordPayment.isPending ? t('common.saving') : t('invoices.payment.record')}
             </button>
           </>
         }
       >
         <p className="text-sm text-slate-500 mb-3">
-          Outstanding balance: <strong>{formatMoney(paying?.balance_due ?? 0)}</strong>.
+          <Trans
+            i18nKey="invoices.payment.outstanding"
+            values={{ amount: formatMoney(paying?.balance_due ?? 0) }}
+            components={{ 1: <strong /> }}
+          />
         </p>
         <div>
-          <label className="label">Amount received</label>
+          <label className="label">{t('invoices.payment.amountReceived')}</label>
           <input
             type="number" step="0.01" autoFocus
             className="input" value={paymentAmount}
@@ -274,8 +280,8 @@ export function InvoicesPage() {
 
       <ConfirmDialog
         open={!!toDelete} onClose={() => setToDelete(null)}
-        title="Delete invoice?" message={`Permanently remove ${toDelete?.invoice_number}?`}
-        confirmLabel="Delete" loading={list.deleteMutation.isPending}
+        title={t('invoices.deleteTitle')} message={t('invoices.deleteMessage', { number: toDelete?.invoice_number ?? '' })}
+        confirmLabel={t('common.delete')} loading={list.deleteMutation.isPending}
         onConfirm={() => { if (toDelete) list.deleteMutation.mutate(toDelete.id, { onSettled: () => setToDelete(null) }); }}
       />
     </>

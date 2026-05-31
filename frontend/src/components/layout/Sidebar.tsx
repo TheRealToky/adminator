@@ -4,6 +4,7 @@ import {
   Receipt, FileText, Wallet, Users2, Building2, Tag, ChefHat,
   X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/store/AuthContext';
@@ -13,28 +14,33 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const nav = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { section: 'Operations' },
-  { to: '/sales', label: 'Sales', icon: ShoppingBag },
-  { to: '/production', label: 'Production', icon: Factory },
-  { to: '/inventory', label: 'Inventory', icon: Boxes },
-  { section: 'Catalog' },
-  { to: '/products', label: 'Products', icon: Package },
-  { to: '/processed-materials', label: 'Processed materials', icon: ChefHat },
-  { to: '/raw-materials', label: 'Raw materials', icon: Tag },
-  { to: '/suppliers', label: 'Suppliers', icon: Building2 },
-  { section: 'Finance' },
-  { to: '/expenses', label: 'Expenses', icon: Wallet },
-  { to: '/invoices', label: 'Invoices', icon: FileText },
-  { to: '/budgets', label: 'Budgets', icon: Receipt },
-  { section: 'Admin', adminOnly: true },
-  { to: '/users', label: 'Staff', icon: Users2, adminOnly: true },
-];
+type NavItem =
+  | { section: string; adminOnly?: boolean }
+  | { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean; adminOnly?: boolean };
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const isAdmin = user?.is_admin ?? false;
+
+  const nav: NavItem[] = [
+    { to: '/', label: t('sidebar.dashboard'), icon: LayoutDashboard, exact: true },
+    { section: t('sidebar.sections.operations') },
+    { to: '/sales', label: t('sidebar.sales'), icon: ShoppingBag },
+    { to: '/production', label: t('sidebar.production'), icon: Factory },
+    { to: '/inventory', label: t('sidebar.inventory'), icon: Boxes },
+    { section: t('sidebar.sections.catalog') },
+    { to: '/products', label: t('sidebar.products'), icon: Package },
+    { to: '/processed-materials', label: t('sidebar.processedMaterials'), icon: ChefHat },
+    { to: '/raw-materials', label: t('sidebar.rawMaterials'), icon: Tag },
+    { to: '/suppliers', label: t('sidebar.suppliers'), icon: Building2 },
+    { section: t('sidebar.sections.finance') },
+    { to: '/expenses', label: t('sidebar.expenses'), icon: Wallet },
+    { to: '/invoices', label: t('sidebar.invoices'), icon: FileText },
+    { to: '/budgets', label: t('sidebar.budgets'), icon: Receipt },
+    { section: t('sidebar.sections.admin'), adminOnly: true },
+    { to: '/users', label: t('sidebar.staff'), icon: Users2, adminOnly: true },
+  ];
 
   return (
     <>
@@ -58,7 +64,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <div className="h-8 w-8 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold">
               A
             </div>
-            <span className="font-semibold text-slate-900">Adminator</span>
+            <span className="font-semibold text-slate-900">{t('common.appName')}</span>
           </div>
           <button onClick={onClose} className="lg:hidden text-slate-500">
             <X size={20} />

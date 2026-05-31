@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Tag, PackagePlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { catalog, inventory } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -25,6 +26,7 @@ const empty: Partial<RawMaterial> = {
 
 export function RawMaterialsPage() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<RawMaterial>({
     queryKey: ['raw-materials'],
     fetcher: (p) => catalog.rawMaterials.list(p),
@@ -45,7 +47,7 @@ export function RawMaterialsPage() {
     mutationFn: () =>
       editing ? catalog.rawMaterials.update(editing.id, form) : catalog.rawMaterials.create(form),
     onSuccess: () => {
-      toast.success(editing ? 'Material updated.' : 'Material created.');
+      toast.success(editing ? t('rawMaterials.updated') : t('rawMaterials.created'));
       qc.invalidateQueries({ queryKey: ['raw-materials'] });
       setOpen(false);
     },
@@ -60,7 +62,7 @@ export function RawMaterialsPage() {
         reference: 'Purchase',
       }),
     onSuccess: () => {
-      toast.success(`Received ${receiveQty} ${receiveOpen?.unit}.`);
+      toast.success(t('rawMaterials.received', { qty: receiveQty, unit: receiveOpen?.unit ?? '' }));
       qc.invalidateQueries({ queryKey: ['stock'] });
       setReceiveOpen(null);
       setReceiveQty('');
@@ -72,17 +74,17 @@ export function RawMaterialsPage() {
   function openEdit(row: RawMaterial) { setEditing(row); setForm(row); setOpen(true); }
 
   const columns: Column<RawMaterial>[] = [
-    { key: 'sku', header: 'SKU', render: (r) => <span className="font-mono text-xs">{r.sku}</span> },
-    { key: 'name', header: 'Name', render: (r) => <span className="font-medium">{r.name}</span> },
-    { key: 'unit', header: 'Unit', render: (r) => r.unit },
-    { key: 'cost', header: 'Cost / unit', align: 'right', render: (r) => formatMoney(r.unit_cost) },
-    { key: 'thresh', header: 'Reorder ≤', align: 'right', render: (r) => formatNumber(r.reorder_threshold, 2) },
-    { key: 'supplier', header: 'Supplier', render: (r) => r.preferred_supplier_name ?? '—' },
+    { key: 'sku', header: t('rawMaterials.columns.sku'), render: (r) => <span className="font-mono text-xs">{r.sku}</span> },
+    { key: 'name', header: t('rawMaterials.columns.name'), render: (r) => <span className="font-medium">{r.name}</span> },
+    { key: 'unit', header: t('rawMaterials.columns.unit'), render: (r) => r.unit },
+    { key: 'cost', header: t('rawMaterials.columns.cost'), align: 'right', render: (r) => formatMoney(r.unit_cost) },
+    { key: 'thresh', header: t('rawMaterials.columns.reorder'), align: 'right', render: (r) => formatNumber(r.reorder_threshold, 2) },
+    { key: 'supplier', header: t('rawMaterials.columns.supplier'), render: (r) => r.preferred_supplier_name ?? '—' },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
         <button
           className="btn-ghost p-1.5 text-emerald-700"
-          title="Receive stock"
+          title={t('rawMaterials.receive.receiveStock')}
           onClick={(e) => { e.stopPropagation(); setReceiveOpen(r); }}
         >
           <PackagePlus size={14} />
@@ -98,20 +100,20 @@ export function RawMaterialsPage() {
   ];
 
   const exportColumns: ExportColumn<RawMaterial>[] = [
-    { key: 'sku', header: 'SKU', value: (r) => r.sku },
-    { key: 'name', header: 'Name', value: (r) => r.name },
-    { key: 'unit', header: 'Unit', value: (r) => r.unit },
-    { key: 'unit_cost', header: 'Unit cost', value: (r) => Number(r.unit_cost) },
-    { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => Number(r.reorder_threshold) },
-    { key: 'preferred_supplier', header: 'Preferred supplier', value: (r) => r.preferred_supplier_name ?? '' },
-    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+    { key: 'sku', header: t('rawMaterials.exportCols.sku'), value: (r) => r.sku },
+    { key: 'name', header: t('rawMaterials.exportCols.name'), value: (r) => r.name },
+    { key: 'unit', header: t('rawMaterials.exportCols.unit'), value: (r) => r.unit },
+    { key: 'unit_cost', header: t('rawMaterials.exportCols.unitCost'), value: (r) => Number(r.unit_cost) },
+    { key: 'reorder_threshold', header: t('rawMaterials.exportCols.reorderThreshold'), value: (r) => Number(r.reorder_threshold) },
+    { key: 'preferred_supplier', header: t('rawMaterials.exportCols.preferredSupplier'), value: (r) => r.preferred_supplier_name ?? '' },
+    { key: 'is_active', header: t('rawMaterials.exportCols.active'), value: (r) => (r.is_active ? t('common.yes') : t('common.no')) },
   ];
 
   return (
     <>
       <PageHeader
-        title="Raw materials"
-        subtitle="Ingredients & supplies consumed by production"
+        title={t('rawMaterials.title')}
+        subtitle={t('rawMaterials.subtitle')}
         actions={
           <>
             <ExportMenu
@@ -122,21 +124,21 @@ export function RawMaterialsPage() {
                 list.search ? { search: list.search } : {},
               )}
             />
-            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New material</button>
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> {t('rawMaterials.new')}</button>
           </>
         }
       />
 
       <div className="card">
         <div className="card-header">
-          <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search by name or SKU…" />
+          <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('rawMaterials.searchPlaceholder')} />
         </div>
         <DataTable
           columns={columns}
           data={list.data?.results}
           loading={list.isLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState icon={Tag} title="No raw materials yet" description="Add ingredients used in production." />}
+          empty={<EmptyState icon={Tag} title={t('rawMaterials.emptyTitle')} description={t('rawMaterials.emptyDescription')} />}
         />
         {list.data && (
           <Pagination
@@ -151,55 +153,55 @@ export function RawMaterialsPage() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={editing ? 'Edit raw material' : 'New raw material'}
+        title={editing ? t('rawMaterials.edit') : t('rawMaterials.newTitle')}
         size="lg"
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending || !form.name || !form.sku}>
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </button>
           </>
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="label">SKU</label>
+            <label className="label">{t('rawMaterials.fields.sku')}</label>
             <input className="input font-mono" value={form.sku ?? ''} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
           </div>
           <div>
-            <label className="label">Name</label>
+            <label className="label">{t('rawMaterials.fields.name')}</label>
             <input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div>
-            <label className="label">Unit</label>
+            <label className="label">{t('rawMaterials.fields.unit')}</label>
             <select className="input" value={form.unit ?? 'g'} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
               {units.data?.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Cost per unit</label>
+            <label className="label">{t('rawMaterials.fields.costPerUnit')}</label>
             <input type="number" step="0.0001" className="input" value={form.unit_cost ?? '0'} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
           </div>
           <div>
-            <label className="label">Reorder threshold</label>
+            <label className="label">{t('rawMaterials.fields.reorderThreshold')}</label>
             <input type="number" step="0.01" className="input" value={form.reorder_threshold ?? '0'} onChange={(e) => setForm({ ...form, reorder_threshold: e.target.value })} />
           </div>
           <div>
-            <label className="label">Preferred supplier</label>
+            <label className="label">{t('rawMaterials.fields.preferredSupplier')}</label>
             <select
               className="input"
               value={form.preferred_supplier ?? ''}
               onChange={(e) => setForm({ ...form, preferred_supplier: e.target.value || null })}
             >
-              <option value="">— None —</option>
+              <option value="">{t('common.none')}</option>
               {suppliers.data?.results.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div className="sm:col-span-2 flex items-center gap-2">
             <input id="active-rm" type="checkbox" checked={form.is_active ?? true}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-            <label htmlFor="active-rm" className="text-sm">Active</label>
+            <label htmlFor="active-rm" className="text-sm">{t('rawMaterials.fields.active')}</label>
           </div>
         </div>
       </Modal>
@@ -207,23 +209,23 @@ export function RawMaterialsPage() {
       <Modal
         open={!!receiveOpen}
         onClose={() => setReceiveOpen(null)}
-        title={`Receive: ${receiveOpen?.name ?? ''}`}
+        title={t('rawMaterials.receive.title', { name: receiveOpen?.name ?? '' })}
         size="sm"
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setReceiveOpen(null)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setReceiveOpen(null)}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
               disabled={!receiveQty || Number(receiveQty) <= 0 || receive.isPending}
               onClick={() => receive.mutate()}
             >
-              {receive.isPending ? 'Recording…' : 'Record'}
+              {receive.isPending ? t('rawMaterials.receive.recording') : t('rawMaterials.receive.record')}
             </button>
           </>
         }
       >
         <div>
-          <label className="label">Quantity received ({receiveOpen?.unit})</label>
+          <label className="label">{t('rawMaterials.receive.qtyLabel', { unit: receiveOpen?.unit ?? '' })}</label>
           <input
             autoFocus
             type="number" step="0.01"
@@ -232,7 +234,7 @@ export function RawMaterialsPage() {
             onChange={(e) => setReceiveQty(e.target.value)}
           />
           <p className="text-xs text-slate-500 mt-2">
-            This logs a stock-in movement and updates current on-hand stock.
+            {t('rawMaterials.receive.hint')}
           </p>
         </div>
       </Modal>
@@ -240,9 +242,9 @@ export function RawMaterialsPage() {
       <ConfirmDialog
         open={!!toDelete}
         onClose={() => setToDelete(null)}
-        title="Delete material?"
-        message={`Delete "${toDelete?.name}"? Linked recipes will also be affected.`}
-        confirmLabel="Delete"
+        title={t('rawMaterials.deleteTitle')}
+        message={t('rawMaterials.deleteMessage', { name: toDelete?.name ?? '' })}
+        confirmLabel={t('common.delete')}
         loading={list.deleteMutation.isPending}
         onConfirm={() => {
           if (!toDelete) return;

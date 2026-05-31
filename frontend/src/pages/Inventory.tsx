@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Boxes, AlertTriangle, History, Sliders, ChefHat } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { inventory } from '@/api/endpoints';
 import { processedMaterials } from '@/api/processed-materials';
@@ -22,22 +23,25 @@ import type { ProcessedMaterialStock } from '@/api/processed-materials';
 type Tab = 'all' | 'low' | 'movements' | 'processed';
 
 export function InventoryPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('all');
   const [adjustOpen, setAdjustOpen] = useState<StockItem | null>(null);
 
+  const tabs: { key: Tab; label: string; icon: typeof Boxes }[] = [
+    { key: 'all', label: t('inventory.tabs.all'), icon: Boxes },
+    { key: 'low', label: t('inventory.tabs.low'), icon: AlertTriangle },
+    { key: 'processed', label: t('inventory.tabs.processed'), icon: ChefHat },
+    { key: 'movements', label: t('inventory.tabs.movements'), icon: History },
+  ];
+
   return (
     <>
-      <PageHeader title="Inventory" subtitle="On-hand stock for products, raw materials, and processed materials" />
+      <PageHeader title={t('inventory.title')} subtitle={t('inventory.subtitle')} />
 
       <div className="card">
         <div className="card-header gap-2 flex-wrap">
           <div className="flex gap-1">
-            {([
-              { key: 'all', label: 'All stock', icon: Boxes },
-              { key: 'low', label: 'Low stock', icon: AlertTriangle },
-              { key: 'processed', label: 'Processed', icon: ChefHat },
-              { key: 'movements', label: 'Movements', icon: History },
-            ] as { key: Tab; label: string; icon: typeof Boxes }[]).map(({ key, label, icon: Icon }) => (
+            {tabs.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
@@ -63,56 +67,67 @@ export function InventoryPage() {
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
-function StockColumns(onAdjust: (s: StockItem) => void): Column<StockItem>[] {
+function useStockColumns(onAdjust: (s: StockItem) => void): Column<StockItem>[] {
+  const { t } = useTranslation();
   return [
-    { key: 'name', header: 'Item', render: (r) => (
+    { key: 'name', header: t('inventory.columns.item'), render: (r) => (
       <div>
         <p className="font-medium">{r.item_name}</p>
         <p className="text-xs text-slate-500 font-mono">{r.item_sku}</p>
       </div>
     )},
-    { key: 'kind', header: 'Type', render: (r) =>
-      r.kind === 'product' ? <span className="badge-blue">Product</span> : <span className="badge-gray">Material</span>
+    { key: 'kind', header: t('inventory.columns.type'), render: (r) =>
+      r.kind === 'product'
+        ? <span className="badge-blue">{t('inventory.badges.product')}</span>
+        : <span className="badge-gray">{t('inventory.badges.material')}</span>
     },
-    { key: 'qty', header: 'On hand', align: 'right', render: (r) => (
+    { key: 'qty', header: t('inventory.columns.onHand'), align: 'right', render: (r) => (
       <span className={r.is_low ? 'text-red-600 font-semibold' : 'font-medium'}>
         {formatNumber(r.quantity, 2)} {r.item_unit}
       </span>
     )},
-    { key: 'thresh', header: 'Reorder ≤', align: 'right', render: (r) => formatNumber(r.reorder_threshold, 2) },
-    { key: 'status', header: 'Status', render: (r) =>
-      r.is_low ? <span className="badge-red">Low</span> : <span className="badge-green">OK</span>
+    { key: 'thresh', header: t('inventory.columns.reorder'), align: 'right', render: (r) => formatNumber(r.reorder_threshold, 2) },
+    { key: 'status', header: t('inventory.columns.status'), render: (r) =>
+      r.is_low
+        ? <span className="badge-red">{t('inventory.badges.low')}</span>
+        : <span className="badge-green">{t('inventory.badges.ok')}</span>
     },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <button className="btn-secondary px-2 py-1 text-xs" onClick={() => onAdjust(r)}>
-        <Sliders size={12} /> Adjust
+        <Sliders size={12} /> {t('inventory.actions.adjust')}
       </button>
     )},
   ];
 }
 
-const stockExportColumns: ExportColumn<StockItem>[] = [
-  { key: 'item_sku', header: 'SKU', value: (r) => r.item_sku },
-  { key: 'item_name', header: 'Item', value: (r) => r.item_name },
-  { key: 'kind', header: 'Type', value: (r) => r.kind },
-  { key: 'item_unit', header: 'Unit', value: (r) => r.item_unit },
-  { key: 'quantity', header: 'On hand', value: (r) => Number(r.quantity) },
-  { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => Number(r.reorder_threshold) },
-  { key: 'is_low', header: 'Low stock', value: (r) => (r.is_low ? 'yes' : 'no') },
-];
+function useStockExportColumns(): ExportColumn<StockItem>[] {
+  const { t } = useTranslation();
+  return [
+    { key: 'item_sku', header: t('inventory.exportCols.sku'), value: (r) => r.item_sku },
+    { key: 'item_name', header: t('inventory.exportCols.item'), value: (r) => r.item_name },
+    { key: 'kind', header: t('inventory.exportCols.type'), value: (r) => r.kind },
+    { key: 'item_unit', header: t('inventory.exportCols.unit'), value: (r) => r.item_unit },
+    { key: 'quantity', header: t('inventory.exportCols.onHand'), value: (r) => Number(r.quantity) },
+    { key: 'reorder_threshold', header: t('inventory.exportCols.reorderThreshold'), value: (r) => Number(r.reorder_threshold) },
+    { key: 'is_low', header: t('inventory.exportCols.lowStock'), value: (r) => (r.is_low ? t('common.yes') : t('common.no')) },
+  ];
+}
 
 function AllStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
+  const { t } = useTranslation();
   const list = useCrudList<StockItem>({
     queryKey: ['stock'],
     fetcher: (p) => inventory.stock.list(p),
   });
+  const columns = useStockColumns(onAdjust);
+  const exportColumns = useStockExportColumns();
   return (
     <>
       <div className="px-5 pt-3 flex items-center justify-between gap-2">
-        <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search stock items…" />
+        <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('inventory.search.all')} />
         <ExportMenu
           filename="stock"
-          columns={stockExportColumns}
+          columns={exportColumns}
           fetchRows={() => fetchAllPaginated(
             (p) => inventory.stock.list(p),
             list.search ? { search: list.search } : {},
@@ -120,11 +135,11 @@ function AllStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
         />
       </div>
       <DataTable
-        columns={StockColumns(onAdjust)}
+        columns={columns}
         data={list.data?.results}
         loading={list.isLoading}
         rowKey={(r) => r.id}
-        empty={<EmptyState icon={Boxes} title="No stock yet" description="Stock entries appear as you create products and materials." />}
+        empty={<EmptyState icon={Boxes} title={t('inventory.empty.stock')} description={t('inventory.empty.stockDescription')} />}
       />
       {list.data && <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />}
     </>
@@ -132,59 +147,63 @@ function AllStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
 }
 
 function LowStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['stock-low'],
     queryFn: () => inventory.stock.low(),
   });
+  const columns = useStockColumns(onAdjust);
+  const exportColumns = useStockExportColumns();
   return (
     <>
       <div className="px-5 pt-3 flex items-center justify-end">
         <ExportMenu
           filename="low-stock"
-          columns={stockExportColumns}
+          columns={exportColumns}
           fetchRows={async () => (await inventory.stock.low()).results}
         />
       </div>
       <DataTable
-        columns={StockColumns(onAdjust)}
+        columns={columns}
         data={data?.results}
         loading={isLoading}
         rowKey={(r) => r.id}
-        empty={<EmptyState icon={AlertTriangle} title="No items below threshold" description="All stocks look healthy." />}
+        empty={<EmptyState icon={AlertTriangle} title={t('inventory.empty.low')} description={t('inventory.empty.lowDescription')} />}
       />
     </>
   );
 }
 
 function MovementsTab() {
+  const { t } = useTranslation();
   const list = useCrudList<StockMovement>({
     queryKey: ['movements'],
     fetcher: (p) => inventory.movements.list(p),
   });
   const columns: Column<StockMovement>[] = [
-    { key: 'when', header: 'When', render: (r) => formatDateTime(r.created_at) },
-    { key: 'item', header: 'Item', render: (r) => <span className="font-medium">{r.item_name}</span> },
-    { key: 'reason', header: 'Reason', render: (r) => <span className="badge-gray">{r.reason_display}</span> },
-    { key: 'delta', header: 'Δ', align: 'right', render: (r) => (
+    { key: 'when', header: t('inventory.columns.when'), render: (r) => formatDateTime(r.created_at) },
+    { key: 'item', header: t('inventory.columns.item'), render: (r) => <span className="font-medium">{r.item_name}</span> },
+    { key: 'reason', header: t('inventory.columns.reason'), render: (r) => <span className="badge-gray">{r.reason_display}</span> },
+    { key: 'delta', header: t('inventory.columns.delta'), align: 'right', render: (r) => (
       <span className={Number(r.quantity_delta) >= 0 ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold'}>
         {Number(r.quantity_delta) > 0 ? '+' : ''}{formatNumber(r.quantity_delta, 2)} {r.item_unit}
       </span>
     )},
-    { key: 'balance', header: 'After', align: 'right', render: (r) => `${formatNumber(r.balance_after, 2)} ${r.item_unit}` },
-    { key: 'ref', header: 'Ref', render: (r) => <span className="font-mono text-xs">{r.reference || '—'}</span> },
-    { key: 'who', header: 'By', render: (r) => r.created_by_name ?? '—' },
+    { key: 'balance', header: t('inventory.columns.after'), align: 'right', render: (r) => `${formatNumber(r.balance_after, 2)} ${r.item_unit}` },
+    { key: 'ref', header: t('inventory.columns.ref'), render: (r) => <span className="font-mono text-xs">{r.reference || '—'}</span> },
+    { key: 'who', header: t('inventory.columns.by'), render: (r) => r.created_by_name ?? '—' },
   ];
   const exportColumns: ExportColumn<StockMovement>[] = [
-    { key: 'created_at', header: 'When', value: (r) => r.created_at },
-    { key: 'item_sku', header: 'SKU', value: (r) => r.item_sku },
-    { key: 'item_name', header: 'Item', value: (r) => r.item_name },
-    { key: 'item_unit', header: 'Unit', value: (r) => r.item_unit },
-    { key: 'reason', header: 'Reason', value: (r) => r.reason_display },
-    { key: 'quantity_delta', header: 'Quantity delta', value: (r) => Number(r.quantity_delta) },
-    { key: 'balance_after', header: 'Balance after', value: (r) => Number(r.balance_after) },
-    { key: 'reference', header: 'Reference', value: (r) => r.reference },
-    { key: 'note', header: 'Note', value: (r) => r.note },
-    { key: 'created_by', header: 'By', value: (r) => r.created_by_name ?? '' },
+    { key: 'created_at', header: t('inventory.exportCols.when'), value: (r) => r.created_at },
+    { key: 'item_sku', header: t('inventory.exportCols.sku'), value: (r) => r.item_sku },
+    { key: 'item_name', header: t('inventory.exportCols.item'), value: (r) => r.item_name },
+    { key: 'item_unit', header: t('inventory.exportCols.unit'), value: (r) => r.item_unit },
+    { key: 'reason', header: t('inventory.exportCols.reason'), value: (r) => r.reason_display },
+    { key: 'quantity_delta', header: t('inventory.exportCols.quantityDelta'), value: (r) => Number(r.quantity_delta) },
+    { key: 'balance_after', header: t('inventory.exportCols.balanceAfter'), value: (r) => Number(r.balance_after) },
+    { key: 'reference', header: t('inventory.exportCols.reference'), value: (r) => r.reference },
+    { key: 'note', header: t('inventory.exportCols.note'), value: (r) => r.note },
+    { key: 'created_by', header: t('inventory.exportCols.by'), value: (r) => r.created_by_name ?? '' },
   ];
   return (
     <>
@@ -200,7 +219,7 @@ function MovementsTab() {
         data={list.data?.results}
         loading={list.isLoading}
         rowKey={(r) => r.id}
-        empty={<EmptyState icon={History} title="No stock movements yet" />}
+        empty={<EmptyState icon={History} title={t('inventory.empty.movements')} />}
       />
       {list.data && <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />}
     </>
@@ -209,6 +228,7 @@ function MovementsTab() {
 
 function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const [delta, setDelta] = useState('');
   const [note, setNote] = useState('');
 
@@ -220,7 +240,7 @@ function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () 
       note,
     }),
     onSuccess: () => {
-      toast.success('Adjustment recorded.');
+      toast.success(t('inventory.adjust.recorded'));
       qc.invalidateQueries({ queryKey: ['stock'] });
       qc.invalidateQueries({ queryKey: ['movements'] });
       qc.invalidateQueries({ queryKey: ['stock-low'] });
@@ -235,35 +255,40 @@ function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () 
     <Modal
       open={!!stock}
       onClose={onClose}
-      title={`Adjust: ${stock.item_name}`}
+      title={t('inventory.adjust.title', { name: stock.item_name })}
       size="sm"
       footer={
         <>
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
           <button
             className="btn-primary"
             disabled={!delta || Number(delta) === 0 || mutate.isPending}
             onClick={() => mutate.mutate()}
           >
-            {mutate.isPending ? 'Saving…' : 'Apply'}
+            {mutate.isPending ? t('common.saving') : t('common.apply')}
           </button>
         </>
       }
     >
-      <p className="text-sm text-slate-500 mb-3">
-        Current on-hand: <strong>{formatNumber(stock.quantity, 2)} {stock.item_unit}</strong>.
-        Enter a positive number to add stock, negative to remove (e.g. waste).
-      </p>
+      <p
+        className="text-sm text-slate-500 mb-3"
+        dangerouslySetInnerHTML={{
+          __html: t('inventory.adjust.currentOnHand', {
+            qty: formatNumber(stock.quantity, 2),
+            unit: stock.item_unit,
+          }),
+        }}
+      />
       <div className="space-y-3">
         <div>
-          <label className="label">Delta ({stock.item_unit})</label>
+          <label className="label">{t('inventory.adjust.delta', { unit: stock.item_unit })}</label>
           <input
             type="number" step="0.01" className="input"
             value={delta} onChange={(e) => setDelta(e.target.value)} autoFocus
           />
         </div>
         <div>
-          <label className="label">Note (optional)</label>
+          <label className="label">{t('common.noteOptional')}</label>
           <textarea className="input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </div>
@@ -273,44 +298,47 @@ function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () 
 
 // ── Processed materials stock tab ─────────────────────────────────────────
 function ProcessedStockTab() {
+  const { t } = useTranslation();
   const list = useCrudList<ProcessedMaterialStock>({
     queryKey: ['processed-stock'],
     fetcher: (p) => processedMaterials.stock.list(p),
   });
   const columns: Column<ProcessedMaterialStock>[] = [
-    { key: 'name', header: 'Item', render: (r) => (
+    { key: 'name', header: t('inventory.columns.item'), render: (r) => (
       <div>
         <p className="font-medium">{r.item_name}</p>
         <p className="text-xs text-slate-500 font-mono">{r.item_sku}</p>
       </div>
     )},
-    { key: 'kind', header: 'Type', render: () => (
-      <span className="badge-yellow">Processed</span>
+    { key: 'kind', header: t('inventory.columns.type'), render: () => (
+      <span className="badge-yellow">{t('inventory.badges.processed')}</span>
     )},
-    { key: 'qty', header: 'On hand', align: 'right', render: (r) => (
+    { key: 'qty', header: t('inventory.columns.onHand'), align: 'right', render: (r) => (
       <span className={r.is_low ? 'text-red-600 font-semibold' : 'font-medium'}>
         {formatNumber(r.quantity, 2)} {r.item_unit}
       </span>
     )},
-    { key: 'thresh', header: 'Reorder ≤', align: 'right', render: (r) => (
+    { key: 'thresh', header: t('inventory.columns.reorder'), align: 'right', render: (r) => (
       formatNumber(r.reorder_threshold, 2)
     )},
-    { key: 'status', header: 'Status', render: (r) => (
-      r.is_low ? <span className="badge-red">Low</span> : <span className="badge-green">OK</span>
+    { key: 'status', header: t('inventory.columns.status'), render: (r) => (
+      r.is_low
+        ? <span className="badge-red">{t('inventory.badges.low')}</span>
+        : <span className="badge-green">{t('inventory.badges.ok')}</span>
     )},
   ];
   const exportColumns: ExportColumn<ProcessedMaterialStock>[] = [
-    { key: 'item_sku', header: 'SKU', value: (r) => r.item_sku },
-    { key: 'item_name', header: 'Item', value: (r) => r.item_name },
-    { key: 'item_unit', header: 'Unit', value: (r) => r.item_unit },
-    { key: 'quantity', header: 'On hand', value: (r) => Number(r.quantity) },
-    { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => Number(r.reorder_threshold) },
-    { key: 'is_low', header: 'Low stock', value: (r) => (r.is_low ? 'yes' : 'no') },
+    { key: 'item_sku', header: t('inventory.exportCols.sku'), value: (r) => r.item_sku },
+    { key: 'item_name', header: t('inventory.exportCols.item'), value: (r) => r.item_name },
+    { key: 'item_unit', header: t('inventory.exportCols.unit'), value: (r) => r.item_unit },
+    { key: 'quantity', header: t('inventory.exportCols.onHand'), value: (r) => Number(r.quantity) },
+    { key: 'reorder_threshold', header: t('inventory.exportCols.reorderThreshold'), value: (r) => Number(r.reorder_threshold) },
+    { key: 'is_low', header: t('inventory.exportCols.lowStock'), value: (r) => (r.is_low ? t('common.yes') : t('common.no')) },
   ];
   return (
     <>
       <div className="px-5 pt-3 flex items-center justify-between gap-2">
-        <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search processed materials…" />
+        <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('inventory.search.processed')} />
         <ExportMenu
           filename="processed-stock"
           columns={exportColumns}
@@ -327,8 +355,8 @@ function ProcessedStockTab() {
         rowKey={(r) => r.id}
         empty={<EmptyState
           icon={ChefHat}
-          title="No processed materials in stock"
-          description='Manage processed materials under Catalog → Processed materials.'
+          title={t('inventory.empty.processed')}
+          description={t('inventory.empty.processedDescription')}
         />}
       />
       {list.data && (

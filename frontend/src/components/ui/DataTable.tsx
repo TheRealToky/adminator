@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface Column<T> {
   key: string;
@@ -19,11 +20,12 @@ interface Props<T> {
 }
 
 export function DataTable<T>({ columns, data, loading, empty, rowKey, onRowClick }: Props<T>) {
+  const { t } = useTranslation();
   if (loading && !data) {
     return (
       <div className="flex items-center justify-center py-16 text-slate-400">
         <Loader2 className="animate-spin mr-2" size={18} />
-        Loading…
+        {t('common.loading')}
       </div>
     );
   }

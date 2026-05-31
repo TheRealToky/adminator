@@ -7,39 +7,43 @@ import {
 import {
   TrendingUp, Wallet, ShoppingCart, Receipt, AlertTriangle, Boxes, Factory,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { analytics } from '@/api/endpoints';
 import { formatMoney, formatNumber, formatDate } from '@/lib/format';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 
-const RANGES = [
-  { value: 7, label: 'Last 7 days' },
-  { value: 30, label: 'Last 30 days' },
-  { value: 90, label: 'Last 90 days' },
-];
-
 const PIE_COLORS = ['#ea580c', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
 
 export function Dashboard() {
+  const { t } = useTranslation();
   const [days, setDays] = useState(30);
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard', days],
     queryFn: () => analytics.dashboard(days),
   });
 
+  const ranges = [
+    { value: 7, label: t('dashboard.ranges.last7') },
+    { value: 30, label: t('dashboard.ranges.last30') },
+    { value: 90, label: t('dashboard.ranges.last90') },
+  ];
+
+  const overdueCount = data?.invoices.by_status.find((s) => s.status === 'overdue')?.count ?? 0;
+
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        subtitle="Operational overview"
+        title={t('dashboard.title')}
+        subtitle={t('dashboard.subtitle')}
         actions={
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
             className="input w-auto"
           >
-            {RANGES.map((r) => (
+            {ranges.map((r) => (
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
@@ -49,38 +53,44 @@ export function Dashboard() {
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <KpiCard
-          label="Revenue"
+          label={t('dashboard.kpi.revenue')}
           value={formatMoney(data?.kpis.revenue ?? 0)}
           changePct={data?.kpis.revenue_change_pct ?? null}
-          hint="vs previous period"
+          hint={t('dashboard.kpi.vsPrev')}
           icon={TrendingUp}
           accent="brand"
         />
         <KpiCard
-          label="Net profit"
+          label={t('dashboard.kpi.netProfit')}
           value={formatMoney(data?.kpis.net_profit ?? 0)}
-          hint={`COGS ${formatMoney(data?.kpis.cost_of_goods ?? 0)} · OpEx ${formatMoney(data?.kpis.operating_expenses ?? 0)}`}
+          hint={t('dashboard.kpi.cogsOpex', {
+            cogs: formatMoney(data?.kpis.cost_of_goods ?? 0),
+            opex: formatMoney(data?.kpis.operating_expenses ?? 0),
+          })}
           icon={Wallet}
           accent="green"
         />
         <KpiCard
-          label="Receipts"
+          label={t('dashboard.kpi.receipts')}
           value={formatNumber(data?.kpis.receipts ?? 0)}
-          hint={`Avg ticket ${formatMoney(data?.kpis.average_ticket ?? 0)}`}
+          hint={t('dashboard.kpi.avgTicket', { value: formatMoney(data?.kpis.average_ticket ?? 0) })}
           icon={ShoppingCart}
           accent="blue"
         />
         <KpiCard
-          label="Inventory on hand"
+          label={t('dashboard.kpi.inventoryOnHand')}
           value={formatMoney(data?.inventory.total_value ?? 0)}
-          hint={`Finished ${formatMoney(data?.inventory.finished_goods_value ?? 0)} · Raw ${formatMoney(data?.inventory.raw_materials_value ?? 0)}`}
+          hint={t('dashboard.kpi.finishedRaw', {
+            finished: formatMoney(data?.inventory.finished_goods_value ?? 0),
+            raw: formatMoney(data?.inventory.raw_materials_value ?? 0),
+          })}
           icon={Boxes}
           accent="purple"
         />
         <KpiCard
-          label="Overdue invoices"
+          label={t('dashboard.kpi.overdueInvoices')}
           value={formatMoney(data?.invoices.overdue_total ?? 0)}
-          hint={`${data?.invoices.by_status.find((s) => s.status === 'overdue')?.count ?? 0} invoices`}
+          hint={t('dashboard.kpi.invoicesCount', { count: overdueCount })}
           icon={Receipt}
           accent="amber"
         />
@@ -90,8 +100,8 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
         <div className="card lg:col-span-2">
           <div className="card-header">
-            <h3 className="font-semibold">Revenue & profit</h3>
-            <span className="text-xs text-slate-500">{days} days</span>
+            <h3 className="font-semibold">{t('dashboard.revenueProfit')}</h3>
+            <span className="text-xs text-slate-500">{t('dashboard.days', { count: days })}</span>
           </div>
           <div className="card-body">
             <div className="h-72">
@@ -122,11 +132,11 @@ export function Dashboard() {
                   <Legend />
                   <Area
                     type="monotone" dataKey="revenue" stroke="#ea580c" fill="url(#revFill)"
-                    strokeWidth={2} name="Revenue"
+                    strokeWidth={2} name={t('dashboard.revenueLabel')}
                   />
                   <Area
                     type="monotone" dataKey="profit" stroke="#10b981" fill="url(#profitFill)"
-                    strokeWidth={2} name="Profit"
+                    strokeWidth={2} name={t('dashboard.profitLabel')}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -137,7 +147,7 @@ export function Dashboard() {
         {/* Payment mix */}
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold">Payment mix</h3>
+            <h3 className="font-semibold">{t('dashboard.paymentMix')}</h3>
           </div>
           <div className="card-body">
             <div className="h-72">
@@ -170,8 +180,8 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold">Busy hours</h3>
-            <span className="text-xs text-slate-500">Receipts by hour-of-day</span>
+            <h3 className="font-semibold">{t('dashboard.busyHours')}</h3>
+            <span className="text-xs text-slate-500">{t('dashboard.busyHoursHint')}</span>
           </div>
           <div className="card-body">
             <div className="h-64">
@@ -181,7 +191,7 @@ export function Dashboard() {
                   <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748b' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
                   <Tooltip formatter={(v: number, n) => (n === 'receipts' ? formatNumber(v) : formatMoney(v))} />
-                  <Bar dataKey="receipts" fill="#3b82f6" name="Receipts" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="receipts" fill="#3b82f6" name={t('dashboard.receiptsLabel')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -190,12 +200,12 @@ export function Dashboard() {
 
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold">Top products</h3>
-            <span className="text-xs text-slate-500">By revenue</span>
+            <h3 className="font-semibold">{t('dashboard.topProducts')}</h3>
+            <span className="text-xs text-slate-500">{t('dashboard.byRevenue')}</span>
           </div>
           <div className="card-body">
             {isLoading ? (
-              <div className="text-slate-400 text-sm py-8 text-center">Loading…</div>
+              <div className="text-slate-400 text-sm py-8 text-center">{t('common.loading')}</div>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {(data?.top_products ?? []).map((p, idx) => (
@@ -207,7 +217,7 @@ export function Dashboard() {
                       <div>
                         <p className="text-sm font-medium text-slate-900">{p.name}</p>
                         <p className="text-xs text-slate-500">
-                          {formatNumber(p.quantity)} sold
+                          {formatNumber(p.quantity)} {t('dashboard.soldSuffix')}
                         </p>
                       </div>
                     </div>
@@ -217,7 +227,7 @@ export function Dashboard() {
                   </li>
                 ))}
                 {(data?.top_products ?? []).length === 0 && (
-                  <li className="py-8 text-center text-slate-400 text-sm">No data in this range</li>
+                  <li className="py-8 text-center text-slate-400 text-sm">{t('dashboard.noData')}</li>
                 )}
               </ul>
             )}
@@ -230,10 +240,13 @@ export function Dashboard() {
         <div className="card">
           <div className="card-header">
             <h3 className="font-semibold flex items-center gap-2">
-              <AlertTriangle size={16} className="text-amber-500" /> Low stock
+              <AlertTriangle size={16} className="text-amber-500" /> {t('dashboard.lowStock')}
             </h3>
             <span className="text-xs text-slate-500">
-              {data?.stock_health.low_stock_count ?? 0} of {data?.stock_health.total_items ?? 0}
+              {t('dashboard.lowStockOf', {
+                low: data?.stock_health.low_stock_count ?? 0,
+                total: data?.stock_health.total_items ?? 0,
+              })}
             </span>
           </div>
           <div className="card-body">
@@ -244,7 +257,9 @@ export function Dashboard() {
                     <Boxes size={14} className="text-slate-400" />
                     <div>
                       <p className="text-sm font-medium text-slate-900">{s.name}</p>
-                      <p className="text-xs text-slate-500">{s.kind === 'product' ? 'Product' : 'Raw material'}</p>
+                      <p className="text-xs text-slate-500">
+                        {s.kind === 'product' ? t('dashboard.kindProduct') : t('dashboard.kindRawMaterial')}
+                      </p>
                     </div>
                   </div>
                   <span className="badge-red">
@@ -253,7 +268,7 @@ export function Dashboard() {
                 </li>
               ))}
               {(data?.stock_health.lowest_items ?? []).length === 0 && (
-                <li className="py-8 text-center text-slate-400 text-sm">All stocks healthy ✓</li>
+                <li className="py-8 text-center text-slate-400 text-sm">{t('dashboard.stocksHealthy')}</li>
               )}
             </ul>
           </div>
@@ -262,10 +277,13 @@ export function Dashboard() {
         <div className="card lg:col-span-2">
           <div className="card-header">
             <h3 className="font-semibold flex items-center gap-2">
-              <Factory size={16} className="text-brand-500" /> Production by day
+              <Factory size={16} className="text-brand-500" /> {t('dashboard.productionByDay')}
             </h3>
             <span className="text-xs text-slate-500">
-              {formatNumber(data?.production_summary.units_produced ?? 0)} units · {formatMoney(data?.production_summary.total_cost ?? 0)}
+              {t('dashboard.productionSummary', {
+                units: formatNumber(data?.production_summary.units_produced ?? 0),
+                cost: formatMoney(data?.production_summary.total_cost ?? 0),
+              })}
             </span>
           </div>
           <div className="card-body">
@@ -284,7 +302,7 @@ export function Dashboard() {
                     labelFormatter={(d) => formatDate(d)}
                   />
                   <Legend />
-                  <Bar dataKey="units" fill="#ea580c" name="Units" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="units" fill="#ea580c" name={t('dashboard.unitsLabel')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -295,7 +313,7 @@ export function Dashboard() {
       {/* Expense breakdown */}
       <div className="card mt-6">
         <div className="card-header">
-          <h3 className="font-semibold">Expenses by category</h3>
+          <h3 className="font-semibold">{t('dashboard.expensesByCategory')}</h3>
         </div>
         <div className="card-body">
           <div className="h-64">

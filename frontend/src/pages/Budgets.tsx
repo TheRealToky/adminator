@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { finance } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -26,6 +27,7 @@ const emptyForm: Partial<Budget> = {
 
 export function BudgetsPage() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<Budget>({
     queryKey: ['budgets'],
     fetcher: (p) => finance.budgets.list(p),
@@ -45,7 +47,7 @@ export function BudgetsPage() {
     mutationFn: () =>
       editing ? finance.budgets.update(editing.id, form) : finance.budgets.create(form),
     onSuccess: () => {
-      toast.success(editing ? 'Budget updated.' : 'Budget created.');
+      toast.success(editing ? t('budgets.updated') : t('budgets.created'));
       qc.invalidateQueries({ queryKey: ['budgets'] });
       setOpen(false);
     },
@@ -60,10 +62,10 @@ export function BudgetsPage() {
   function openEdit(row: Budget) { setEditing(row); setForm(row); setOpen(true); }
 
   const columns: Column<Budget>[] = [
-    { key: 'cat', header: 'Category', render: (r) => <span className="font-medium">{r.category_name}</span> },
-    { key: 'month', header: 'Month', render: (r) => formatDate(r.month, { year: 'numeric', month: 'long' }) },
-    { key: 'amount', header: 'Budgeted', align: 'right', render: (r) => <span className="font-semibold">{formatMoney(r.amount)}</span> },
-    { key: 'notes', header: 'Notes', render: (r) => r.notes || '—' },
+    { key: 'cat', header: t('budgets.columns.category'), render: (r) => <span className="font-medium">{r.category_name}</span> },
+    { key: 'month', header: t('budgets.columns.month'), render: (r) => formatDate(r.month, { year: 'numeric', month: 'long' }) },
+    { key: 'amount', header: t('budgets.columns.budgeted'), align: 'right', render: (r) => <span className="font-semibold">{formatMoney(r.amount)}</span> },
+    { key: 'notes', header: t('budgets.columns.notes'), render: (r) => r.notes || '—' },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
         <button className="btn-ghost p-1.5" onClick={(e) => { e.stopPropagation(); openEdit(r); }}><Pencil size={14} /></button>
@@ -73,17 +75,17 @@ export function BudgetsPage() {
   ];
 
   const exportColumns: ExportColumn<Budget>[] = [
-    { key: 'category', header: 'Category', value: (r) => r.category_name },
-    { key: 'month', header: 'Month', value: (r) => r.month },
-    { key: 'amount', header: 'Budgeted', value: (r) => Number(r.amount) },
-    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+    { key: 'category', header: t('budgets.exportCols.category'), value: (r) => r.category_name },
+    { key: 'month', header: t('budgets.exportCols.month'), value: (r) => r.month },
+    { key: 'amount', header: t('budgets.exportCols.budgeted'), value: (r) => Number(r.amount) },
+    { key: 'notes', header: t('budgets.exportCols.notes'), value: (r) => r.notes },
   ];
 
   return (
     <>
       <PageHeader
-        title="Budgets"
-        subtitle="Monthly spending caps per expense category"
+        title={t('budgets.title')}
+        subtitle={t('budgets.subtitle')}
         actions={
           <>
             <ExportMenu
@@ -91,13 +93,13 @@ export function BudgetsPage() {
               columns={exportColumns}
               fetchRows={() => fetchAllPaginated((p) => finance.budgets.list(p))}
             />
-            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New budget</button>
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> {t('budgets.new')}</button>
           </>
         }
       />
       <div className="card">
         <DataTable columns={columns} data={list.data?.results} loading={list.isLoading} rowKey={(r) => r.id}
-          empty={<EmptyState icon={Receipt} title="No budgets defined" description="Set monthly caps to monitor spending." />} />
+          empty={<EmptyState icon={Receipt} title={t('budgets.emptyTitle')} description={t('budgets.emptyDescription')} />} />
         {list.data && (
           <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />
         )}
@@ -105,34 +107,34 @@ export function BudgetsPage() {
 
       <Modal
         open={open} onClose={() => setOpen(false)}
-        title={editing ? 'Edit budget' : 'New budget'}
+        title={editing ? t('budgets.editModal') : t('budgets.newModal')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button className="btn-primary" disabled={!form.category || !form.amount || save.isPending} onClick={() => save.mutate()}>
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </button>
           </>
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="label">Category</label>
+            <label className="label">{t('budgets.fields.category')}</label>
             <select className="input" value={form.category ?? ''} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-              <option value="">— Select —</option>
+              <option value="">{t('common.select')}</option>
               {categories.data?.results.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Month (1st day)</label>
+            <label className="label">{t('budgets.fields.monthFirstDay')}</label>
             <input type="date" className="input" value={form.month ?? ''} onChange={(e) => setForm({ ...form, month: e.target.value })} />
           </div>
           <div>
-            <label className="label">Amount</label>
+            <label className="label">{t('budgets.fields.amount')}</label>
             <input type="number" step="0.01" className="input" value={form.amount ?? '0'} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Notes</label>
+            <label className="label">{t('budgets.fields.notes')}</label>
             <textarea className="input" rows={2} value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
         </div>
@@ -140,8 +142,8 @@ export function BudgetsPage() {
 
       <ConfirmDialog
         open={!!toDelete} onClose={() => setToDelete(null)}
-        title="Delete budget?" message="This will remove the budget entry."
-        confirmLabel="Delete" loading={list.deleteMutation.isPending}
+        title={t('budgets.deleteTitle')} message={t('budgets.deleteMessage')}
+        confirmLabel={t('common.delete')} loading={list.deleteMutation.isPending}
         onConfirm={() => { if (toDelete) list.deleteMutation.mutate(toDelete.id, { onSettled: () => setToDelete(null) }); }}
       />
     </>

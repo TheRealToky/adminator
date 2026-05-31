@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Factory, PlayCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { catalog, production } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -20,6 +21,7 @@ import type { ProductionRun } from '@/api/types';
 
 export function ProductionPage() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<ProductionRun>({
     queryKey: ['production-runs'],
     fetcher: (p) => production.runs.list(p),
@@ -45,7 +47,7 @@ export function ProductionPage() {
       notes,
     }),
     onSuccess: () => {
-      toast.success('Production run recorded.');
+      toast.success(t('production.recorded'));
       qc.invalidateQueries({ queryKey: ['production-runs'] });
       qc.invalidateQueries({ queryKey: ['stock'] });
       qc.invalidateQueries({ queryKey: ['movements'] });
@@ -55,23 +57,26 @@ export function ProductionPage() {
   });
 
   const columns: Column<ProductionRun>[] = [
-    { key: 'sched', header: 'Scheduled', render: (r) => formatDate(r.scheduled_for) },
-    { key: 'product', header: 'Product', render: (r) => (
+    { key: 'sched', header: t('production.columns.scheduled'), render: (r) => formatDate(r.scheduled_for) },
+    { key: 'product', header: t('production.columns.product'), render: (r) => (
       <div>
         <p className="font-medium">{r.product_name}</p>
         <p className="text-xs text-slate-500 font-mono">{r.product_sku}</p>
       </div>
     )},
-    { key: 'qty', header: 'Quantity', align: 'right', render: (r) => formatNumber(r.quantity, 2) },
-    { key: 'cost', header: 'Cost', align: 'right', render: (r) => formatMoney(r.cost) },
-    { key: 'status', header: 'Status', render: (r) => {
+    { key: 'qty', header: t('production.columns.quantity'), align: 'right', render: (r) => formatNumber(r.quantity, 2) },
+    { key: 'cost', header: t('production.columns.cost'), align: 'right', render: (r) => formatMoney(r.cost) },
+    { key: 'status', header: t('production.columns.status'), render: (r) => {
       const cls = r.status === 'completed' ? 'badge-green'
                 : r.status === 'planned' ? 'badge-blue'
                 : 'badge-gray';
-      return <span className={cls}>{r.status}</span>;
+      const label = r.status === 'completed' ? t('production.statuses.completed')
+                  : r.status === 'planned' ? t('production.statuses.planned')
+                  : r.status;
+      return <span className={cls}>{label}</span>;
     }},
-    { key: 'when', header: 'Completed', render: (r) => r.completed_at ? formatDateTime(r.completed_at) : '—' },
-    { key: 'by', header: 'By', render: (r) => r.created_by_name ?? '—' },
+    { key: 'when', header: t('production.columns.completed'), render: (r) => r.completed_at ? formatDateTime(r.completed_at) : '—' },
+    { key: 'by', header: t('production.columns.by'), render: (r) => r.created_by_name ?? '—' },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <button
         className="btn-ghost p-1.5 text-red-600"
@@ -83,22 +88,22 @@ export function ProductionPage() {
   ];
 
   const exportColumns: ExportColumn<ProductionRun>[] = [
-    { key: 'scheduled_for', header: 'Scheduled', value: (r) => r.scheduled_for },
-    { key: 'completed_at', header: 'Completed', value: (r) => r.completed_at ?? '' },
-    { key: 'product_sku', header: 'Product SKU', value: (r) => r.product_sku },
-    { key: 'product_name', header: 'Product', value: (r) => r.product_name },
-    { key: 'quantity', header: 'Quantity', value: (r) => Number(r.quantity) },
-    { key: 'cost', header: 'Cost', value: (r) => Number(r.cost) },
-    { key: 'status', header: 'Status', value: (r) => r.status },
-    { key: 'created_by', header: 'By', value: (r) => r.created_by_name ?? '' },
-    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+    { key: 'scheduled_for', header: t('production.exportCols.scheduled'), value: (r) => r.scheduled_for },
+    { key: 'completed_at', header: t('production.exportCols.completed'), value: (r) => r.completed_at ?? '' },
+    { key: 'product_sku', header: t('production.exportCols.productSku'), value: (r) => r.product_sku },
+    { key: 'product_name', header: t('production.exportCols.product'), value: (r) => r.product_name },
+    { key: 'quantity', header: t('production.exportCols.quantity'), value: (r) => Number(r.quantity) },
+    { key: 'cost', header: t('production.exportCols.cost'), value: (r) => Number(r.cost) },
+    { key: 'status', header: t('production.exportCols.status'), value: (r) => r.status },
+    { key: 'created_by', header: t('production.exportCols.by'), value: (r) => r.created_by_name ?? '' },
+    { key: 'notes', header: t('production.exportCols.notes'), value: (r) => r.notes },
   ];
 
   return (
     <>
       <PageHeader
-        title="Production"
-        subtitle="Bake & cook runs — automatically consumes raw materials"
+        title={t('production.title')}
+        subtitle={t('production.subtitle')}
         actions={
           <>
             <ExportMenu
@@ -110,21 +115,21 @@ export function ProductionPage() {
               )}
             />
             <button onClick={() => setOpen(true)} className="btn-primary">
-              <PlayCircle size={16} /> New run
+              <PlayCircle size={16} /> {t('production.new')}
             </button>
           </>
         }
       />
       <div className="card">
         <div className="card-header">
-          <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search by product…" />
+          <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('production.searchPlaceholder')} />
         </div>
         <DataTable
           columns={columns}
           data={list.data?.results}
           loading={list.isLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState icon={Factory} title="No production runs yet" description="Record what you bake to keep stock and costs accurate." />}
+          empty={<EmptyState icon={Factory} title={t('production.emptyTitle')} description={t('production.emptyDescription')} />}
         />
         {list.data && (
           <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />
@@ -134,25 +139,25 @@ export function ProductionPage() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="New production run"
+        title={t('production.newTitle')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
               disabled={!productId || !qty || execute.isPending}
               onClick={() => execute.mutate()}
             >
-              {execute.isPending ? 'Recording…' : 'Record'}
+              {execute.isPending ? t('production.footer.recording') : t('production.footer.record')}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <label className="label">Product</label>
+            <label className="label">{t('production.fields.product')}</label>
             <select className="input" value={productId} onChange={(e) => setProductId(e.target.value)}>
-              <option value="">— Select —</option>
+              <option value="">{t('common.select')}</option>
               {products.data?.results.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -160,20 +165,20 @@ export function ProductionPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Quantity</label>
+              <label className="label">{t('production.fields.quantity')}</label>
               <input type="number" step="0.01" className="input" value={qty} onChange={(e) => setQty(e.target.value)} />
             </div>
             <div>
-              <label className="label">Scheduled for</label>
+              <label className="label">{t('production.fields.scheduledFor')}</label>
               <input type="date" className="input" value={scheduledFor} onChange={(e) => setScheduledFor(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="label">Notes (optional)</label>
+            <label className="label">{t('production.fields.notesOptional')}</label>
             <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           <p className="text-xs text-slate-500">
-            Recording a run will deduct each ingredient from raw material stock based on the product's recipe.
+            {t('production.footer.hint')}
           </p>
         </div>
       </Modal>
@@ -181,9 +186,9 @@ export function ProductionPage() {
       <ConfirmDialog
         open={!!toDelete}
         onClose={() => setToDelete(null)}
-        title="Delete this run?"
-        message="The run will be removed but related stock movements are preserved for audit."
-        confirmLabel="Delete"
+        title={t('production.deleteTitle')}
+        message={t('production.deleteMessage')}
+        confirmLabel={t('common.delete')}
         loading={list.deleteMutation.isPending}
         onConfirm={() => {
           if (!toDelete) return;

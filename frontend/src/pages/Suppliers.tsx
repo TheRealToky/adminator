@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { catalog } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -23,6 +24,7 @@ const empty: Partial<Supplier> = {
 
 export function SuppliersPage() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<Supplier>({
     queryKey: ['suppliers'],
     fetcher: (p) => catalog.suppliers.list(p),
@@ -38,7 +40,7 @@ export function SuppliersPage() {
     mutationFn: () =>
       editing ? catalog.suppliers.update(editing.id, form) : catalog.suppliers.create(form),
     onSuccess: () => {
-      toast.success(editing ? 'Supplier updated.' : 'Supplier created.');
+      toast.success(editing ? t('suppliers.updated') : t('suppliers.created'));
       qc.invalidateQueries({ queryKey: ['suppliers'] });
       setOpen(false);
     },
@@ -49,12 +51,14 @@ export function SuppliersPage() {
   function openEdit(row: Supplier) { setEditing(row); setForm(row); setOpen(true); }
 
   const columns: Column<Supplier>[] = [
-    { key: 'name', header: 'Name', render: (r) => <span className="font-medium">{r.name}</span> },
-    { key: 'contact', header: 'Contact', render: (r) => r.contact_name || '—' },
-    { key: 'phone', header: 'Phone', render: (r) => r.phone || '—' },
-    { key: 'email', header: 'Email', render: (r) => r.email || '—' },
-    { key: 'active', header: 'Status', render: (r) => (
-      r.is_active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>
+    { key: 'name', header: t('suppliers.columns.name'), render: (r) => <span className="font-medium">{r.name}</span> },
+    { key: 'contact', header: t('suppliers.columns.contact'), render: (r) => r.contact_name || '—' },
+    { key: 'phone', header: t('suppliers.columns.phone'), render: (r) => r.phone || '—' },
+    { key: 'email', header: t('suppliers.columns.email'), render: (r) => r.email || '—' },
+    { key: 'active', header: t('suppliers.columns.status'), render: (r) => (
+      r.is_active
+        ? <span className="badge-green">{t('common.active')}</span>
+        : <span className="badge-gray">{t('common.inactive')}</span>
     )},
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
@@ -69,20 +73,20 @@ export function SuppliersPage() {
   ];
 
   const exportColumns: ExportColumn<Supplier>[] = [
-    { key: 'name', header: 'Name', value: (r) => r.name },
-    { key: 'contact_name', header: 'Contact', value: (r) => r.contact_name },
-    { key: 'phone', header: 'Phone', value: (r) => r.phone },
-    { key: 'email', header: 'Email', value: (r) => r.email },
-    { key: 'address', header: 'Address', value: (r) => r.address },
-    { key: 'notes', header: 'Notes', value: (r) => r.notes },
-    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+    { key: 'name', header: t('suppliers.exportCols.name'), value: (r) => r.name },
+    { key: 'contact_name', header: t('suppliers.exportCols.contact'), value: (r) => r.contact_name },
+    { key: 'phone', header: t('suppliers.exportCols.phone'), value: (r) => r.phone },
+    { key: 'email', header: t('suppliers.exportCols.email'), value: (r) => r.email },
+    { key: 'address', header: t('suppliers.exportCols.address'), value: (r) => r.address },
+    { key: 'notes', header: t('suppliers.exportCols.notes'), value: (r) => r.notes },
+    { key: 'is_active', header: t('suppliers.exportCols.active'), value: (r) => (r.is_active ? t('common.yes') : t('common.no')) },
   ];
 
   return (
     <>
       <PageHeader
-        title="Suppliers"
-        subtitle="Vendors for raw materials and other supplies"
+        title={t('suppliers.title')}
+        subtitle={t('suppliers.subtitle')}
         actions={
           <>
             <ExportMenu
@@ -93,21 +97,21 @@ export function SuppliersPage() {
                 list.search ? { search: list.search } : {},
               )}
             />
-            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New supplier</button>
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> {t('suppliers.new')}</button>
           </>
         }
       />
 
       <div className="card">
         <div className="card-header">
-          <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search suppliers…" />
+          <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('suppliers.searchPlaceholder')} />
         </div>
         <DataTable
           columns={columns}
           data={list.data?.results}
           loading={list.isLoading}
           rowKey={(r) => r.id}
-          empty={<EmptyState icon={Building2} title="No suppliers yet" description="Add the vendors you buy from." />}
+          empty={<EmptyState icon={Building2} title={t('suppliers.emptyTitle')} description={t('suppliers.emptyDescription')} />}
         />
         {list.data && (
           <Pagination
@@ -122,39 +126,39 @@ export function SuppliersPage() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={editing ? 'Edit supplier' : 'New supplier'}
+        title={editing ? t('suppliers.edit') : t('suppliers.new')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending || !form.name}>
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </button>
           </>
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="label">Company name</label>
+            <label className="label">{t('suppliers.fields.companyName')}</label>
             <input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div>
-            <label className="label">Contact person</label>
+            <label className="label">{t('suppliers.fields.contact')}</label>
             <input className="input" value={form.contact_name ?? ''} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
           </div>
           <div>
-            <label className="label">Phone</label>
+            <label className="label">{t('suppliers.fields.phone')}</label>
             <input className="input" value={form.phone ?? ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Email</label>
+            <label className="label">{t('suppliers.fields.email')}</label>
             <input type="email" className="input" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Address</label>
+            <label className="label">{t('suppliers.fields.address')}</label>
             <textarea className="input" rows={2} value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Notes</label>
+            <label className="label">{t('suppliers.fields.notes')}</label>
             <textarea className="input" rows={2} value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
           <div className="sm:col-span-2 flex items-center gap-2">
@@ -163,7 +167,7 @@ export function SuppliersPage() {
               checked={form.is_active ?? true}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
             />
-            <label htmlFor="active" className="text-sm">Active</label>
+            <label htmlFor="active" className="text-sm">{t('suppliers.fields.active')}</label>
           </div>
         </div>
       </Modal>
@@ -171,9 +175,9 @@ export function SuppliersPage() {
       <ConfirmDialog
         open={!!toDelete}
         onClose={() => setToDelete(null)}
-        title="Delete supplier?"
-        message={`Permanently remove "${toDelete?.name}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        title={t('suppliers.deleteTitle')}
+        message={t('suppliers.deleteMessage', { name: toDelete?.name ?? '' })}
+        confirmLabel={t('common.delete')}
         loading={list.deleteMutation.isPending}
         onConfirm={() => {
           if (!toDelete) return;

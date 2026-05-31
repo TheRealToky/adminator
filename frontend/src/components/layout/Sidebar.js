@@ -1,30 +1,32 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, ShoppingBag, Package, Boxes, Factory, Receipt, FileText, Wallet, Users2, Building2, Tag, ChefHat, X, } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/store/AuthContext';
-const nav = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-    { section: 'Operations' },
-    { to: '/sales', label: 'Sales', icon: ShoppingBag },
-    { to: '/production', label: 'Production', icon: Factory },
-    { to: '/inventory', label: 'Inventory', icon: Boxes },
-    { section: 'Catalog' },
-    { to: '/products', label: 'Products', icon: Package },
-    { to: '/processed-materials', label: 'Processed materials', icon: ChefHat },
-    { to: '/raw-materials', label: 'Raw materials', icon: Tag },
-    { to: '/suppliers', label: 'Suppliers', icon: Building2 },
-    { section: 'Finance' },
-    { to: '/expenses', label: 'Expenses', icon: Wallet },
-    { to: '/invoices', label: 'Invoices', icon: FileText },
-    { to: '/budgets', label: 'Budgets', icon: Receipt },
-    { section: 'Admin', adminOnly: true },
-    { to: '/users', label: 'Staff', icon: Users2, adminOnly: true },
-];
 export function Sidebar({ open, onClose }) {
     const { user } = useAuth();
+    const { t } = useTranslation();
     const isAdmin = user?.is_admin ?? false;
-    return (_jsxs(_Fragment, { children: [_jsx("div", { className: cn('fixed inset-0 bg-slate-900/40 z-40 lg:hidden transition-opacity', open ? 'opacity-100' : 'opacity-0 pointer-events-none'), onClick: onClose }), _jsxs("aside", { className: cn('fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-white border-r border-slate-200', 'transform transition-transform lg:translate-x-0', open ? 'translate-x-0' : '-translate-x-full'), children: [_jsxs("div", { className: "flex items-center justify-between h-16 px-5 border-b border-slate-200", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("div", { className: "h-8 w-8 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold", children: "A" }), _jsx("span", { className: "font-semibold text-slate-900", children: "Adminator" })] }), _jsx("button", { onClick: onClose, className: "lg:hidden text-slate-500", children: _jsx(X, { size: 20 }) })] }), _jsx("nav", { className: "px-3 py-4 space-y-0.5 overflow-y-auto h-[calc(100vh-4rem)]", children: nav.map((item, idx) => {
+    const nav = [
+        { to: '/', label: t('sidebar.dashboard'), icon: LayoutDashboard, exact: true },
+        { section: t('sidebar.sections.operations') },
+        { to: '/sales', label: t('sidebar.sales'), icon: ShoppingBag },
+        { to: '/production', label: t('sidebar.production'), icon: Factory },
+        { to: '/inventory', label: t('sidebar.inventory'), icon: Boxes },
+        { section: t('sidebar.sections.catalog') },
+        { to: '/products', label: t('sidebar.products'), icon: Package },
+        { to: '/processed-materials', label: t('sidebar.processedMaterials'), icon: ChefHat },
+        { to: '/raw-materials', label: t('sidebar.rawMaterials'), icon: Tag },
+        { to: '/suppliers', label: t('sidebar.suppliers'), icon: Building2 },
+        { section: t('sidebar.sections.finance') },
+        { to: '/expenses', label: t('sidebar.expenses'), icon: Wallet },
+        { to: '/invoices', label: t('sidebar.invoices'), icon: FileText },
+        { to: '/budgets', label: t('sidebar.budgets'), icon: Receipt },
+        { section: t('sidebar.sections.admin'), adminOnly: true },
+        { to: '/users', label: t('sidebar.staff'), icon: Users2, adminOnly: true },
+    ];
+    return (_jsxs(_Fragment, { children: [_jsx("div", { className: cn('fixed inset-0 bg-slate-900/40 z-40 lg:hidden transition-opacity', open ? 'opacity-100' : 'opacity-0 pointer-events-none'), onClick: onClose }), _jsxs("aside", { className: cn('fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-white border-r border-slate-200', 'transform transition-transform lg:translate-x-0', open ? 'translate-x-0' : '-translate-x-full'), children: [_jsxs("div", { className: "flex items-center justify-between h-16 px-5 border-b border-slate-200", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("div", { className: "h-8 w-8 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold", children: "A" }), _jsx("span", { className: "font-semibold text-slate-900", children: t('common.appName') })] }), _jsx("button", { onClick: onClose, className: "lg:hidden text-slate-500", children: _jsx(X, { size: 20 }) })] }), _jsx("nav", { className: "px-3 py-4 space-y-0.5 overflow-y-auto h-[calc(100vh-4rem)]", children: nav.map((item, idx) => {
                             if ('section' in item) {
                                 if (item.adminOnly && !isAdmin)
                                     return null;

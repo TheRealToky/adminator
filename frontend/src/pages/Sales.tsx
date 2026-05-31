@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShoppingBag, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { catalog, sales } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -22,6 +23,7 @@ interface CartLine { product: Product; quantity: number; unit_price: number; }
 
 export function SalesPage() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<Sale>({
     queryKey: ['sales'],
     fetcher: (p) => sales.list(p),
@@ -61,7 +63,7 @@ export function SalesPage() {
       notes,
     }),
     onSuccess: (sale) => {
-      toast.success(`Receipt ${sale.receipt_number} recorded.`);
+      toast.success(t('sales.recorded', { number: sale.receipt_number }));
       qc.invalidateQueries({ queryKey: ['sales'] });
       qc.invalidateQueries({ queryKey: ['stock'] });
       setOpen(false);
@@ -88,13 +90,13 @@ export function SalesPage() {
   }
 
   const columns: Column<Sale>[] = [
-    { key: 'when', header: 'When', render: (r) => formatDateTime(r.occurred_at) },
-    { key: 'rcpt', header: 'Receipt', render: (r) => <span className="font-mono text-xs">{r.receipt_number}</span> },
-    { key: 'customer', header: 'Customer', render: (r) => r.customer_name || '—' },
-    { key: 'pay', header: 'Payment', render: (r) => <span className="badge-blue">{r.payment_method_display}</span> },
-    { key: 'channel', header: 'Channel', render: (r) => <span className="badge-gray">{r.channel_display}</span> },
-    { key: 'total', header: 'Total', align: 'right', render: (r) => <span className="font-semibold">{formatMoney(r.total)}</span> },
-    { key: 'profit', header: 'Profit', align: 'right', render: (r) => <span className="text-emerald-700">{formatMoney(r.profit)}</span> },
+    { key: 'when', header: t('sales.columns.when'), render: (r) => formatDateTime(r.occurred_at) },
+    { key: 'rcpt', header: t('sales.columns.receipt'), render: (r) => <span className="font-mono text-xs">{r.receipt_number}</span> },
+    { key: 'customer', header: t('sales.columns.customer'), render: (r) => r.customer_name || '—' },
+    { key: 'pay', header: t('sales.columns.payment'), render: (r) => <span className="badge-blue">{r.payment_method_display}</span> },
+    { key: 'channel', header: t('sales.columns.channel'), render: (r) => <span className="badge-gray">{r.channel_display}</span> },
+    { key: 'total', header: t('sales.columns.total'), align: 'right', render: (r) => <span className="font-semibold">{formatMoney(r.total)}</span> },
+    { key: 'profit', header: t('sales.columns.profit'), align: 'right', render: (r) => <span className="text-emerald-700">{formatMoney(r.profit)}</span> },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <button className="btn-ghost p-1.5 text-red-600" onClick={(e) => { e.stopPropagation(); setToDelete(r); }}>
         <Trash2 size={14} />
@@ -103,27 +105,27 @@ export function SalesPage() {
   ];
 
   const exportColumns: ExportColumn<Sale>[] = [
-    { key: 'occurred_at', header: 'When', value: (r) => r.occurred_at },
-    { key: 'receipt_number', header: 'Receipt', value: (r) => r.receipt_number },
-    { key: 'customer_name', header: 'Customer', value: (r) => r.customer_name },
-    { key: 'customer_phone', header: 'Phone', value: (r) => r.customer_phone },
-    { key: 'payment_method', header: 'Payment method', value: (r) => r.payment_method_display },
-    { key: 'channel', header: 'Channel', value: (r) => r.channel_display },
-    { key: 'item_count', header: 'Items', value: (r) => r.items.length },
-    { key: 'subtotal', header: 'Subtotal', value: (r) => Number(r.subtotal) },
-    { key: 'discount', header: 'Discount', value: (r) => Number(r.discount) },
-    { key: 'total', header: 'Total', value: (r) => Number(r.total) },
-    { key: 'cost_of_goods', header: 'COGS', value: (r) => Number(r.cost_of_goods) },
-    { key: 'profit', header: 'Profit', value: (r) => Number(r.profit) },
-    { key: 'served_by', header: 'Served by', value: (r) => r.served_by_name ?? '' },
-    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+    { key: 'occurred_at', header: t('sales.exportCols.when'), value: (r) => r.occurred_at },
+    { key: 'receipt_number', header: t('sales.exportCols.receipt'), value: (r) => r.receipt_number },
+    { key: 'customer_name', header: t('sales.exportCols.customer'), value: (r) => r.customer_name },
+    { key: 'customer_phone', header: t('sales.exportCols.phone'), value: (r) => r.customer_phone },
+    { key: 'payment_method', header: t('sales.exportCols.paymentMethod'), value: (r) => r.payment_method_display },
+    { key: 'channel', header: t('sales.exportCols.channel'), value: (r) => r.channel_display },
+    { key: 'item_count', header: t('sales.exportCols.items'), value: (r) => r.items.length },
+    { key: 'subtotal', header: t('sales.exportCols.subtotal'), value: (r) => Number(r.subtotal) },
+    { key: 'discount', header: t('sales.exportCols.discount'), value: (r) => Number(r.discount) },
+    { key: 'total', header: t('sales.exportCols.total'), value: (r) => Number(r.total) },
+    { key: 'cost_of_goods', header: t('sales.exportCols.cogs'), value: (r) => Number(r.cost_of_goods) },
+    { key: 'profit', header: t('sales.exportCols.profit'), value: (r) => Number(r.profit) },
+    { key: 'served_by', header: t('sales.exportCols.servedBy'), value: (r) => r.served_by_name ?? '' },
+    { key: 'notes', header: t('sales.exportCols.notes'), value: (r) => r.notes },
   ];
 
   return (
     <>
       <PageHeader
-        title="Sales"
-        subtitle="Record receipts; stock and profit update automatically."
+        title={t('sales.title')}
+        subtitle={t('sales.subtitle')}
         actions={
           <>
             <ExportMenu
@@ -134,14 +136,14 @@ export function SalesPage() {
                 list.search ? { search: list.search } : {},
               )}
             />
-            <button onClick={() => setOpen(true)} className="btn-primary"><Plus size={16} /> New sale</button>
+            <button onClick={() => setOpen(true)} className="btn-primary"><Plus size={16} /> {t('sales.new')}</button>
           </>
         }
       />
 
       <div className="card">
         <div className="card-header">
-          <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search by receipt, customer…" />
+          <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('sales.searchPlaceholder')} />
         </div>
         <DataTable
           columns={columns}
@@ -149,7 +151,7 @@ export function SalesPage() {
           loading={list.isLoading}
           rowKey={(r) => r.id}
           onRowClick={(r) => setViewing(r)}
-          empty={<EmptyState icon={ShoppingBag} title="No sales recorded yet" />}
+          empty={<EmptyState icon={ShoppingBag} title={t('sales.emptyTitle')} />}
         />
         {list.data && <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />}
       </div>
@@ -158,22 +160,22 @@ export function SalesPage() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="New sale"
+        title={t('sales.new')}
         size="xl"
         footer={
           <>
             <div className="mr-auto text-sm text-slate-500">
-              Subtotal {formatMoney(cart.reduce((a, l) => a + l.quantity * l.unit_price, 0))}
-              {Number(discount) > 0 && <> · discount {formatMoney(Number(discount))}</>}
-              <span className="ml-3 text-base text-slate-900 font-semibold">Total {formatMoney(total)}</span>
+              {t('sales.footer.subtotal', { value: formatMoney(cart.reduce((a, l) => a + l.quantity * l.unit_price, 0)) })}
+              {Number(discount) > 0 && <> · {t('sales.footer.discount', { value: formatMoney(Number(discount)) })}</>}
+              <span className="ml-3 text-base text-slate-900 font-semibold">{t('sales.footer.total', { value: formatMoney(total) })}</span>
             </div>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
               disabled={cart.length === 0 || submit.isPending}
               onClick={() => submit.mutate()}
             >
-              {submit.isPending ? 'Recording…' : 'Record sale'}
+              {submit.isPending ? t('sales.footer.recording') : t('sales.footer.record')}
             </button>
           </>
         }
@@ -183,19 +185,19 @@ export function SalesPage() {
           <div className="lg:col-span-2 space-y-3">
             <div className="flex gap-2">
               <select className="input flex-1" value={addProductId} onChange={(e) => setAddProductId(e.target.value)}>
-                <option value="">— Add product —</option>
+                <option value="">{t('sales.cart.addProductPlaceholder')}</option>
                 {products.data?.results.map((p) => (
                   <option key={p.id} value={p.id}>{p.name} · {formatMoney(p.selling_price)}</option>
                 ))}
               </select>
               <button className="btn-primary" onClick={addToCart} disabled={!addProductId}>
-                <Plus size={16} /> Add
+                <Plus size={16} /> {t('common.add')}
               </button>
             </div>
 
             <ul className="border border-slate-200 rounded-md divide-y divide-slate-100">
               {cart.length === 0 && (
-                <li className="px-4 py-6 text-sm text-slate-400 text-center">Cart is empty</li>
+                <li className="px-4 py-6 text-sm text-slate-400 text-center">{t('sales.cart.empty')}</li>
               )}
               {cart.map((l) => (
                 <li key={l.product.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-center">
@@ -204,7 +206,7 @@ export function SalesPage() {
                     <p className="text-xs text-slate-500 font-mono">{l.product.sku}</p>
                   </div>
                   <div className="col-span-3">
-                    <label className="text-xs text-slate-500">Qty</label>
+                    <label className="text-xs text-slate-500">{t('sales.cart.qty')}</label>
                     <input
                       type="number" min="1" step="0.01" className="input py-1.5"
                       value={l.quantity}
@@ -212,7 +214,7 @@ export function SalesPage() {
                     />
                   </div>
                   <div className="col-span-3">
-                    <label className="text-xs text-slate-500">Unit price</label>
+                    <label className="text-xs text-slate-500">{t('sales.cart.unitPrice')}</label>
                     <input
                       type="number" step="0.01" className="input py-1.5"
                       value={l.unit_price}
@@ -225,7 +227,7 @@ export function SalesPage() {
                     </button>
                   </div>
                   <div className="col-span-12 text-right text-sm font-semibold text-slate-700">
-                    Line total: {formatMoney(l.quantity * l.unit_price)}
+                    {t('sales.cart.lineTotal', { value: formatMoney(l.quantity * l.unit_price) })}
                   </div>
                 </li>
               ))}
@@ -235,31 +237,31 @@ export function SalesPage() {
           {/* Side panel */}
           <div className="space-y-3">
             <div>
-              <label className="label">Payment method</label>
+              <label className="label">{t('sales.fields.paymentMethod')}</label>
               <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
                 {paymentMethods.data?.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Channel</label>
+              <label className="label">{t('sales.fields.channel')}</label>
               <select className="input" value={channel} onChange={(e) => setChannel(e.target.value)}>
                 {channels.data?.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Discount</label>
+              <label className="label">{t('sales.fields.discount')}</label>
               <input type="number" step="0.01" className="input" value={discount} onChange={(e) => setDiscount(e.target.value)} />
             </div>
             <div>
-              <label className="label">Customer name (optional)</label>
+              <label className="label">{t('sales.fields.customerName')}</label>
               <input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
             </div>
             <div>
-              <label className="label">Customer phone (optional)</label>
+              <label className="label">{t('sales.fields.customerPhone')}</label>
               <input className="input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
             </div>
             <div>
-              <label className="label">Notes</label>
+              <label className="label">{t('sales.fields.notes')}</label>
               <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
           </div>
@@ -267,20 +269,25 @@ export function SalesPage() {
       </Modal>
 
       {/* View sale details */}
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing ? `Receipt ${viewing.receipt_number}` : ''} size="lg">
+      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing ? t('sales.details.receipt', { number: viewing.receipt_number }) : ''} size="lg">
         {viewing && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-slate-500">When:</span> {formatDateTime(viewing.occurred_at)}</div>
-              <div><span className="text-slate-500">Payment:</span> {viewing.payment_method_display}</div>
-              <div><span className="text-slate-500">Channel:</span> {viewing.channel_display}</div>
-              <div><span className="text-slate-500">Served by:</span> {viewing.served_by_name ?? '—'}</div>
-              <div><span className="text-slate-500">Customer:</span> {viewing.customer_name || '—'}</div>
-              <div><span className="text-slate-500">Phone:</span> {viewing.customer_phone || '—'}</div>
+              <div><span className="text-slate-500">{t('sales.details.when')}</span> {formatDateTime(viewing.occurred_at)}</div>
+              <div><span className="text-slate-500">{t('sales.details.payment')}</span> {viewing.payment_method_display}</div>
+              <div><span className="text-slate-500">{t('sales.details.channel')}</span> {viewing.channel_display}</div>
+              <div><span className="text-slate-500">{t('sales.details.servedBy')}</span> {viewing.served_by_name ?? '—'}</div>
+              <div><span className="text-slate-500">{t('sales.details.customer')}</span> {viewing.customer_name || '—'}</div>
+              <div><span className="text-slate-500">{t('sales.details.phone')}</span> {viewing.customer_phone || '—'}</div>
             </div>
             <table className="table-base">
               <thead>
-                <tr><th>Product</th><th className="text-right">Qty</th><th className="text-right">Unit</th><th className="text-right">Total</th></tr>
+                <tr>
+                  <th>{t('sales.details.product')}</th>
+                  <th className="text-right">{t('sales.details.qty')}</th>
+                  <th className="text-right">{t('sales.details.unit')}</th>
+                  <th className="text-right">{t('sales.details.total')}</th>
+                </tr>
               </thead>
               <tbody>
                 {viewing.items.map((it) => (
@@ -294,10 +301,10 @@ export function SalesPage() {
               </tbody>
             </table>
             <div className="text-right space-y-1 text-sm">
-              <div>Subtotal: <strong>{formatMoney(viewing.subtotal)}</strong></div>
-              <div>Discount: <strong>{formatMoney(viewing.discount)}</strong></div>
-              <div className="text-base">Total: <strong>{formatMoney(viewing.total)}</strong></div>
-              <div className="text-emerald-700">Profit: <strong>{formatMoney(viewing.profit)}</strong></div>
+              <div>{t('sales.details.subtotal')} <strong>{formatMoney(viewing.subtotal)}</strong></div>
+              <div>{t('sales.details.discount')} <strong>{formatMoney(viewing.discount)}</strong></div>
+              <div className="text-base">{t('sales.details.totalLabel')} <strong>{formatMoney(viewing.total)}</strong></div>
+              <div className="text-emerald-700">{t('sales.details.profit')} <strong>{formatMoney(viewing.profit)}</strong></div>
             </div>
           </div>
         )}
@@ -306,9 +313,9 @@ export function SalesPage() {
       <ConfirmDialog
         open={!!toDelete}
         onClose={() => setToDelete(null)}
-        title="Delete this sale?"
-        message="Receipt will be removed permanently."
-        confirmLabel="Delete"
+        title={t('sales.deleteTitle')}
+        message={t('sales.deleteMessage')}
+        confirmLabel={t('common.delete')}
         loading={list.deleteMutation.isPending}
         onConfirm={() => {
           if (!toDelete) return;

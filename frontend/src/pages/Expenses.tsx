@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Wallet, Folder } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { catalog, finance } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -21,22 +22,23 @@ import type { Expense, ExpenseCategory } from '@/api/types';
 type Tab = 'expenses' | 'categories';
 
 export function ExpensesPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('expenses');
   return (
     <>
-      <PageHeader title="Expenses" subtitle="Operating costs by category" />
+      <PageHeader title={t('expenses.title')} subtitle={t('expenses.subtitle')} />
       <div className="card">
         <div className="card-header">
           <div className="flex gap-1">
-            {(['expenses', 'categories'] as Tab[]).map((t) => (
+            {(['expenses', 'categories'] as Tab[]).map((tabKey) => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
+                key={tabKey}
+                onClick={() => setTab(tabKey)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium capitalize ${
-                  tab === t ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
+                  tab === tabKey ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                {t}
+                {t(`expenses.tabs.${tabKey}`)}
               </button>
             ))}
           </div>
@@ -50,6 +52,7 @@ export function ExpensesPage() {
 // ── Expenses tab ──────────────────────────────────────────────────────────
 function ExpensesTab() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<Expense>({
     queryKey: ['expenses'],
     fetcher: (p) => finance.expenses.list(p),
@@ -79,7 +82,7 @@ function ExpensesTab() {
     mutationFn: () =>
       editing ? finance.expenses.update(editing.id, form) : finance.expenses.create(form),
     onSuccess: () => {
-      toast.success(editing ? 'Expense updated.' : 'Expense recorded.');
+      toast.success(editing ? t('expenses.list.updated') : t('expenses.list.created'));
       qc.invalidateQueries({ queryKey: ['expenses'] });
       setOpen(false);
     },
@@ -89,7 +92,7 @@ function ExpensesTab() {
   const createCategory = useMutation({
     mutationFn: () => finance.expenseCategories.create({ name: newCat.name.trim(), is_active: true }),
     onSuccess: (cat) => {
-      toast.success('Category created.');
+      toast.success(t('expenses.list.categoryCreated'));
       qc.invalidateQueries({ queryKey: ['expense-cats-all'] });
       qc.invalidateQueries({ queryKey: ['expense-cats'] });
       setForm((f) => ({ ...f, category: cat.id }));
@@ -112,12 +115,12 @@ function ExpensesTab() {
   }
 
   const columns: Column<Expense>[] = [
-    { key: 'date', header: 'Date', render: (r) => formatDate(r.incurred_on) },
-    { key: 'title', header: 'Title', render: (r) => <span className="font-medium">{r.title}</span> },
-    { key: 'cat', header: 'Category', render: (r) => <span className="badge-gray">{r.category_name}</span> },
-    { key: 'amount', header: 'Amount', align: 'right', render: (r) => <span className="font-semibold">{formatMoney(r.amount)}</span> },
-    { key: 'pay', header: 'Payment', render: (r) => r.payment_method_display },
-    { key: 'sup', header: 'Supplier', render: (r) => r.supplier_name ?? '—' },
+    { key: 'date', header: t('expenses.columns.date'), render: (r) => formatDate(r.incurred_on) },
+    { key: 'title', header: t('expenses.columns.title'), render: (r) => <span className="font-medium">{r.title}</span> },
+    { key: 'cat', header: t('expenses.columns.category'), render: (r) => <span className="badge-gray">{r.category_name}</span> },
+    { key: 'amount', header: t('expenses.columns.amount'), align: 'right', render: (r) => <span className="font-semibold">{formatMoney(r.amount)}</span> },
+    { key: 'pay', header: t('expenses.columns.payment'), render: (r) => r.payment_method_display },
+    { key: 'sup', header: t('expenses.columns.supplier'), render: (r) => r.supplier_name ?? '—' },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
         <button className="btn-ghost p-1.5" onClick={(e) => { e.stopPropagation(); openEdit(r); }}><Pencil size={14} /></button>
@@ -127,21 +130,21 @@ function ExpensesTab() {
   ];
 
   const exportColumns: ExportColumn<Expense>[] = [
-    { key: 'incurred_on', header: 'Date', value: (r) => r.incurred_on },
-    { key: 'title', header: 'Title', value: (r) => r.title },
-    { key: 'category', header: 'Category', value: (r) => r.category_name },
-    { key: 'amount', header: 'Amount', value: (r) => Number(r.amount) },
-    { key: 'payment_method', header: 'Payment', value: (r) => r.payment_method_display },
-    { key: 'supplier', header: 'Supplier', value: (r) => r.supplier_name ?? '' },
-    { key: 'reference', header: 'Reference', value: (r) => r.reference },
-    { key: 'recorded_by', header: 'Recorded by', value: (r) => r.recorded_by_name ?? '' },
-    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+    { key: 'incurred_on', header: t('expenses.exportCols.date'), value: (r) => r.incurred_on },
+    { key: 'title', header: t('expenses.exportCols.title'), value: (r) => r.title },
+    { key: 'category', header: t('expenses.exportCols.category'), value: (r) => r.category_name },
+    { key: 'amount', header: t('expenses.exportCols.amount'), value: (r) => Number(r.amount) },
+    { key: 'payment_method', header: t('expenses.exportCols.payment'), value: (r) => r.payment_method_display },
+    { key: 'supplier', header: t('expenses.exportCols.supplier'), value: (r) => r.supplier_name ?? '' },
+    { key: 'reference', header: t('expenses.exportCols.reference'), value: (r) => r.reference },
+    { key: 'recorded_by', header: t('expenses.exportCols.recordedBy'), value: (r) => r.recorded_by_name ?? '' },
+    { key: 'notes', header: t('expenses.exportCols.notes'), value: (r) => r.notes },
   ];
 
   return (
     <>
       <div className="px-5 pt-3 flex items-center justify-between gap-2">
-        <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search expenses…" />
+        <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('expenses.list.searchPlaceholder')} />
         <div className="flex items-center gap-2">
           <ExportMenu
             filename="expenses"
@@ -151,13 +154,13 @@ function ExpensesTab() {
               list.search ? { search: list.search } : {},
             )}
           />
-          <button onClick={openCreate} className="btn-primary"><Plus size={16} /> Record expense</button>
+          <button onClick={openCreate} className="btn-primary"><Plus size={16} /> {t('expenses.list.new')}</button>
         </div>
       </div>
       <DataTable
         columns={columns} data={list.data?.results}
         loading={list.isLoading} rowKey={(r) => r.id}
-        empty={<EmptyState icon={Wallet} title="No expenses recorded" description="Track operating costs as they happen." />}
+        empty={<EmptyState icon={Wallet} title={t('expenses.list.emptyTitle')} description={t('expenses.list.emptyDescription')} />}
       />
       {list.data && (
         <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />
@@ -165,36 +168,36 @@ function ExpensesTab() {
 
       <Modal
         open={open} onClose={() => setOpen(false)}
-        title={editing ? 'Edit expense' : 'Record expense'}
+        title={editing ? t('expenses.list.editModal') : t('expenses.list.newModal')}
         size="lg"
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
               disabled={!form.title || !form.amount || !form.category || save.isPending}
               onClick={() => save.mutate()}
             >
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </button>
           </>
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="label">Title</label>
+            <label className="label">{t('expenses.fields.title')}</label>
             <input className="input" value={form.title ?? ''} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="label">Category</label>
+              <label className="label">{t('expenses.fields.category')}</label>
               {!newCat.open && (
                 <button
                   type="button"
                   onClick={() => setNewCat({ open: true, name: '' })}
                   className="text-xs font-medium text-brand-700 hover:text-brand-800 inline-flex items-center gap-0.5"
                 >
-                  <Plus size={12} /> New
+                  <Plus size={12} /> {t('expenses.fields.new')}
                 </button>
               )}
             </div>
@@ -203,7 +206,7 @@ function ExpensesTab() {
                 <input
                   autoFocus
                   className="input flex-1"
-                  placeholder="Category name"
+                  placeholder={t('expenses.fields.categoryNamePlaceholder')}
                   value={newCat.name}
                   onChange={(e) => setNewCat((s) => ({ ...s, name: e.target.value }))}
                   onKeyDown={(e) => {
@@ -223,55 +226,55 @@ function ExpensesTab() {
                   disabled={!newCat.name.trim() || createCategory.isPending}
                   onClick={() => createCategory.mutate()}
                 >
-                  {createCategory.isPending ? '…' : 'Add'}
+                  {createCategory.isPending ? '…' : t('common.add')}
                 </button>
                 <button
                   type="button"
                   className="btn-secondary px-3"
                   onClick={() => setNewCat({ open: false, name: '' })}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             ) : (
               <select className="input" value={form.category ?? ''} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                 <option value="">
-                  {categories.data && categories.data.results.length === 0 ? '— None yet — click + New —' : '— Select —'}
+                  {categories.data && categories.data.results.length === 0 ? t('expenses.fields.noneYet') : t('common.select')}
                 </option>
                 {categories.data?.results.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             )}
           </div>
           <div>
-            <label className="label">Amount</label>
+            <label className="label">{t('expenses.fields.amount')}</label>
             <input type="number" step="0.01" className="input" value={form.amount ?? '0'} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
           </div>
           <div>
-            <label className="label">Date</label>
+            <label className="label">{t('expenses.fields.date')}</label>
             <input type="date" className="input" value={form.incurred_on ?? ''} onChange={(e) => setForm({ ...form, incurred_on: e.target.value })} />
           </div>
           <div>
-            <label className="label">Payment method</label>
+            <label className="label">{t('expenses.fields.paymentMethod')}</label>
             <select className="input" value={form.payment_method ?? 'cash'} onChange={(e) => setForm({ ...form, payment_method: e.target.value })}>
-              <option value="cash">Cash</option>
-              <option value="mobile_money">Mobile Money</option>
-              <option value="card">Card</option>
-              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cash">{t('expenses.fields.paymentMethods.cash')}</option>
+              <option value="mobile_money">{t('expenses.fields.paymentMethods.mobile_money')}</option>
+              <option value="card">{t('expenses.fields.paymentMethods.card')}</option>
+              <option value="bank_transfer">{t('expenses.fields.paymentMethods.bank_transfer')}</option>
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Supplier (optional)</label>
+            <label className="label">{t('expenses.fields.supplierOptional')}</label>
             <select className="input" value={form.supplier ?? ''} onChange={(e) => setForm({ ...form, supplier: e.target.value || null })}>
-              <option value="">— None —</option>
+              <option value="">{t('common.none')}</option>
               {suppliers.data?.results.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Reference / receipt #</label>
+            <label className="label">{t('expenses.fields.reference')}</label>
             <input className="input" value={form.reference ?? ''} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Notes</label>
+            <label className="label">{t('expenses.fields.notes')}</label>
             <textarea className="input" rows={2} value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
         </div>
@@ -280,9 +283,9 @@ function ExpensesTab() {
       <ConfirmDialog
         open={!!toDelete}
         onClose={() => setToDelete(null)}
-        title="Delete expense?"
-        message={`Remove "${toDelete?.title}"?`}
-        confirmLabel="Delete"
+        title={t('expenses.list.deleteTitle')}
+        message={t('expenses.list.deleteMessage', { title: toDelete?.title ?? '' })}
+        confirmLabel={t('common.delete')}
         loading={list.deleteMutation.isPending}
         onConfirm={() => {
           if (!toDelete) return;
@@ -296,6 +299,7 @@ function ExpensesTab() {
 // ── Categories tab ────────────────────────────────────────────────────────
 function CategoriesTab() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<ExpenseCategory>({
     queryKey: ['expense-cats'],
     fetcher: (p) => finance.expenseCategories.list(p),
@@ -311,7 +315,7 @@ function CategoriesTab() {
     mutationFn: () =>
       editing ? finance.expenseCategories.update(editing.id, form) : finance.expenseCategories.create(form),
     onSuccess: () => {
-      toast.success(editing ? 'Category updated.' : 'Category created.');
+      toast.success(editing ? t('expenses.categories.updated') : t('expenses.categories.created'));
       qc.invalidateQueries({ queryKey: ['expense-cats'] });
       setOpen(false);
     },
@@ -319,10 +323,12 @@ function CategoriesTab() {
   });
 
   const columns: Column<ExpenseCategory>[] = [
-    { key: 'name', header: 'Name', render: (r) => <span className="font-medium">{r.name}</span> },
-    { key: 'desc', header: 'Description', render: (r) => r.description || '—' },
-    { key: 'status', header: 'Status', render: (r) =>
-      r.is_active ? <span className="badge-green">Active</span> : <span className="badge-gray">Off</span>
+    { key: 'name', header: t('expenses.columns.name'), render: (r) => <span className="font-medium">{r.name}</span> },
+    { key: 'desc', header: t('expenses.columns.description'), render: (r) => r.description || '—' },
+    { key: 'status', header: t('expenses.columns.status'), render: (r) =>
+      r.is_active
+        ? <span className="badge-green">{t('common.active')}</span>
+        : <span className="badge-gray">{t('common.off')}</span>
     },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
@@ -333,15 +339,15 @@ function CategoriesTab() {
   ];
 
   const exportColumns: ExportColumn<ExpenseCategory>[] = [
-    { key: 'name', header: 'Name', value: (r) => r.name },
-    { key: 'description', header: 'Description', value: (r) => r.description },
-    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+    { key: 'name', header: t('expenses.exportCols.name'), value: (r) => r.name },
+    { key: 'description', header: t('expenses.exportCols.description'), value: (r) => r.description },
+    { key: 'is_active', header: t('expenses.exportCols.active'), value: (r) => (r.is_active ? t('common.yes') : t('common.no')) },
   ];
 
   return (
     <>
       <div className="px-5 pt-3 flex items-center justify-between gap-2">
-        <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search categories…" />
+        <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('expenses.categories.searchPlaceholder')} />
         <div className="flex items-center gap-2">
           <ExportMenu
             filename="expense-categories"
@@ -352,12 +358,12 @@ function CategoriesTab() {
             )}
           />
           <button onClick={() => { setEditing(null); setForm({ name: '', description: '', is_active: true }); setOpen(true); }} className="btn-primary">
-            <Plus size={16} /> New category
+            <Plus size={16} /> {t('expenses.categories.new')}
           </button>
         </div>
       </div>
       <DataTable columns={columns} data={list.data?.results} loading={list.isLoading} rowKey={(r) => r.id}
-        empty={<EmptyState icon={Folder} title="No categories yet" />} />
+        empty={<EmptyState icon={Folder} title={t('expenses.categories.emptyTitle')} />} />
       {list.data && (
         <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />
       )}
@@ -365,23 +371,23 @@ function CategoriesTab() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={editing ? 'Edit category' : 'New category'}
+        title={editing ? t('expenses.categories.editModal') : t('expenses.categories.newModal')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button className="btn-primary" disabled={!form.name || save.isPending} onClick={() => save.mutate()}>
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </button>
           </>
         }
       >
         <div className="space-y-3">
           <div>
-            <label className="label">Name</label>
+            <label className="label">{t('expenses.fields.name')}</label>
             <input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div>
-            <label className="label">Description</label>
+            <label className="label">{t('expenses.fields.description')}</label>
             <textarea className="input" rows={2} value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
         </div>
@@ -389,8 +395,8 @@ function CategoriesTab() {
 
       <ConfirmDialog
         open={!!toDelete} onClose={() => setToDelete(null)}
-        title="Delete category?" message={`Remove "${toDelete?.name}"?`}
-        confirmLabel="Delete" loading={list.deleteMutation.isPending}
+        title={t('expenses.categories.deleteTitle')} message={t('expenses.categories.deleteMessage', { name: toDelete?.name ?? '' })}
+        confirmLabel={t('common.delete')} loading={list.deleteMutation.isPending}
         onConfirm={() => { if (toDelete) list.deleteMutation.mutate(toDelete.id, { onSettled: () => setToDelete(null) }); }}
       />
     </>

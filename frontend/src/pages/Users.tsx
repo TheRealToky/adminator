@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Users2, ShieldCheck, ShieldOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import { auth as authApi, users as usersApi } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
@@ -38,6 +39,7 @@ const emptyForm: FormState = {
 
 export function UsersPage() {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const list = useCrudList<User>({
     queryKey: ['users'],
     fetcher: (p) => usersApi.list(p),
@@ -59,7 +61,7 @@ export function UsersPage() {
       return usersApi.create(form);
     },
     onSuccess: () => {
-      toast.success(editing ? 'User updated.' : 'User created.');
+      toast.success(editing ? t('users.updated') : t('users.created'));
       qc.invalidateQueries({ queryKey: ['users'] });
       setOpen(false);
     },
@@ -68,7 +70,7 @@ export function UsersPage() {
 
   const toggle = useMutation({
     mutationFn: (u: User) => u.is_active ? usersApi.deactivate(u.id) : usersApi.activate(u.id),
-    onSuccess: () => { toast.success('Updated.'); qc.invalidateQueries({ queryKey: ['users'] }); },
+    onSuccess: () => { toast.success(t('common.updated')); qc.invalidateQueries({ queryKey: ['users'] }); },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
@@ -83,23 +85,25 @@ export function UsersPage() {
   }
 
   const columns: Column<User>[] = [
-    { key: 'name', header: 'Name', render: (r) => (
+    { key: 'name', header: t('users.columns.name'), render: (r) => (
       <div>
         <p className="font-medium">{r.full_name}</p>
         <p className="text-xs text-slate-500">{r.email}</p>
       </div>
     )},
-    { key: 'phone', header: 'Phone', render: (r) => r.phone || '—' },
-    { key: 'role', header: 'Role', render: (r) => <span className={ROLE_BADGE[r.role] ?? 'badge-gray'}>{r.role}</span> },
-    { key: 'status', header: 'Status', render: (r) =>
-      r.is_active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>
+    { key: 'phone', header: t('users.columns.phone'), render: (r) => r.phone || '—' },
+    { key: 'role', header: t('users.columns.role'), render: (r) => <span className={ROLE_BADGE[r.role] ?? 'badge-gray'}>{r.role}</span> },
+    { key: 'status', header: t('users.columns.status'), render: (r) =>
+      r.is_active
+        ? <span className="badge-green">{t('common.active')}</span>
+        : <span className="badge-gray">{t('common.inactive')}</span>
     },
-    { key: 'joined', header: 'Joined', render: (r) => formatDate(r.date_joined) },
+    { key: 'joined', header: t('users.columns.joined'), render: (r) => formatDate(r.date_joined) },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
         <button
           className="btn-ghost p-1.5"
-          title={r.is_active ? 'Deactivate' : 'Activate'}
+          title={r.is_active ? t('users.actions.deactivate') : t('users.actions.activate')}
           onClick={(e) => { e.stopPropagation(); toggle.mutate(r); }}
         >
           {r.is_active ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
@@ -111,19 +115,19 @@ export function UsersPage() {
   ];
 
   const exportColumns: ExportColumn<User>[] = [
-    { key: 'full_name', header: 'Name', value: (r) => r.full_name },
-    { key: 'email', header: 'Email', value: (r) => r.email },
-    { key: 'phone', header: 'Phone', value: (r) => r.phone },
-    { key: 'role', header: 'Role', value: (r) => r.role },
-    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
-    { key: 'date_joined', header: 'Joined', value: (r) => r.date_joined },
+    { key: 'full_name', header: t('users.exportCols.name'), value: (r) => r.full_name },
+    { key: 'email', header: t('users.exportCols.email'), value: (r) => r.email },
+    { key: 'phone', header: t('users.exportCols.phone'), value: (r) => r.phone },
+    { key: 'role', header: t('users.exportCols.role'), value: (r) => r.role },
+    { key: 'is_active', header: t('users.exportCols.active'), value: (r) => (r.is_active ? t('common.yes') : t('common.no')) },
+    { key: 'date_joined', header: t('users.exportCols.joined'), value: (r) => r.date_joined },
   ];
 
   return (
     <>
       <PageHeader
-        title="Staff"
-        subtitle="Internal users with role-based access"
+        title={t('users.title')}
+        subtitle={t('users.subtitle')}
         actions={
           <>
             <ExportMenu
@@ -134,16 +138,16 @@ export function UsersPage() {
                 list.search ? { search: list.search } : {},
               )}
             />
-            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New user</button>
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> {t('users.new')}</button>
           </>
         }
       />
       <div className="card">
         <div className="card-header">
-          <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search by name or email…" />
+          <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('users.searchPlaceholder')} />
         </div>
         <DataTable columns={columns} data={list.data?.results} loading={list.isLoading} rowKey={(r) => r.id}
-          empty={<EmptyState icon={Users2} title="No staff accounts yet" />} />
+          empty={<EmptyState icon={Users2} title={t('users.emptyTitle')} />} />
         {list.data && (
           <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />
         )}
@@ -151,35 +155,35 @@ export function UsersPage() {
 
       <Modal
         open={open} onClose={() => setOpen(false)}
-        title={editing ? `Edit ${editing.full_name}` : 'New user'}
+        title={editing ? t('users.editModal', { name: editing.full_name }) : t('users.newModal')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
               disabled={!form.email || !form.full_name || (!editing && !form.password) || save.isPending}
               onClick={() => save.mutate()}
             >
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? t('common.saving') : t('common.save')}
             </button>
           </>
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="label">Full name</label>
+            <label className="label">{t('users.fields.fullName')}</label>
             <input className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
           </div>
           <div>
-            <label className="label">Email</label>
+            <label className="label">{t('users.fields.email')}</label>
             <input type="email" className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
           <div>
-            <label className="label">Phone</label>
+            <label className="label">{t('users.fields.phone')}</label>
             <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
           <div>
-            <label className="label">Role</label>
+            <label className="label">{t('users.fields.role')}</label>
             <select
               className="input"
               value={form.role}
@@ -190,7 +194,7 @@ export function UsersPage() {
           </div>
           {!editing && (
             <div>
-              <label className="label">Password</label>
+              <label className="label">{t('users.fields.password')}</label>
               <input
                 type="password" className="input" value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -201,15 +205,15 @@ export function UsersPage() {
           <div className="sm:col-span-2 flex items-center gap-2">
             <input id="active-user" type="checkbox" checked={form.is_active}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-            <label htmlFor="active-user" className="text-sm">Active</label>
+            <label htmlFor="active-user" className="text-sm">{t('users.fields.active')}</label>
           </div>
         </div>
       </Modal>
 
       <ConfirmDialog
         open={!!toDelete} onClose={() => setToDelete(null)}
-        title="Delete user?" message={`Permanently remove "${toDelete?.full_name}"?`}
-        confirmLabel="Delete" loading={list.deleteMutation.isPending}
+        title={t('users.deleteTitle')} message={t('users.deleteMessage', { name: toDelete?.full_name ?? '' })}
+        confirmLabel={t('common.delete')} loading={list.deleteMutation.isPending}
         onConfirm={() => { if (toDelete) list.deleteMutation.mutate(toDelete.id, { onSettled: () => setToDelete(null) }); }}
       />
     </>
