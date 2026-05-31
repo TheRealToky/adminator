@@ -13,6 +13,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import type { Supplier } from '@/api/types';
 
 const empty: Partial<Supplier> = {
@@ -66,12 +68,34 @@ export function SuppliersPage() {
     )},
   ];
 
+  const exportColumns: ExportColumn<Supplier>[] = [
+    { key: 'name', header: 'Name', value: (r) => r.name },
+    { key: 'contact_name', header: 'Contact', value: (r) => r.contact_name },
+    { key: 'phone', header: 'Phone', value: (r) => r.phone },
+    { key: 'email', header: 'Email', value: (r) => r.email },
+    { key: 'address', header: 'Address', value: (r) => r.address },
+    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+  ];
+
   return (
     <>
       <PageHeader
         title="Suppliers"
         subtitle="Vendors for raw materials and other supplies"
-        actions={<button onClick={openCreate} className="btn-primary"><Plus size={16} /> New supplier</button>}
+        actions={
+          <>
+            <ExportMenu
+              filename="suppliers"
+              columns={exportColumns}
+              fetchRows={() => fetchAllPaginated(
+                (p) => catalog.suppliers.list(p),
+                list.search ? { search: list.search } : {},
+              )}
+            />
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New supplier</button>
+          </>
+        }
       />
 
       <div className="card">

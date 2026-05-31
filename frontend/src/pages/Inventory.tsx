@@ -12,6 +12,8 @@ import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { useCrudList } from '@/hooks/useCrudList';
 import { formatNumber, formatDateTime } from '@/lib/format';
 import type { StockItem, StockMovement } from '@/api/types';
@@ -89,6 +91,16 @@ function StockColumns(onAdjust: (s: StockItem) => void): Column<StockItem>[] {
   ];
 }
 
+const stockExportColumns: ExportColumn<StockItem>[] = [
+  { key: 'item_sku', header: 'SKU', value: (r) => r.item_sku },
+  { key: 'item_name', header: 'Item', value: (r) => r.item_name },
+  { key: 'kind', header: 'Type', value: (r) => r.kind },
+  { key: 'item_unit', header: 'Unit', value: (r) => r.item_unit },
+  { key: 'quantity', header: 'On hand', value: (r) => Number(r.quantity) },
+  { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => Number(r.reorder_threshold) },
+  { key: 'is_low', header: 'Low stock', value: (r) => (r.is_low ? 'yes' : 'no') },
+];
+
 function AllStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
   const list = useCrudList<StockItem>({
     queryKey: ['stock'],
@@ -96,8 +108,16 @@ function AllStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
   });
   return (
     <>
-      <div className="px-5 pt-3">
+      <div className="px-5 pt-3 flex items-center justify-between gap-2">
         <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search stock items…" />
+        <ExportMenu
+          filename="stock"
+          columns={stockExportColumns}
+          fetchRows={() => fetchAllPaginated(
+            (p) => inventory.stock.list(p),
+            list.search ? { search: list.search } : {},
+          )}
+        />
       </div>
       <DataTable
         columns={StockColumns(onAdjust)}
@@ -117,13 +137,22 @@ function LowStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
     queryFn: () => inventory.stock.low(),
   });
   return (
-    <DataTable
-      columns={StockColumns(onAdjust)}
-      data={data?.results}
-      loading={isLoading}
-      rowKey={(r) => r.id}
-      empty={<EmptyState icon={AlertTriangle} title="No items below threshold" description="All stocks look healthy." />}
-    />
+    <>
+      <div className="px-5 pt-3 flex items-center justify-end">
+        <ExportMenu
+          filename="low-stock"
+          columns={stockExportColumns}
+          fetchRows={async () => (await inventory.stock.low()).results}
+        />
+      </div>
+      <DataTable
+        columns={StockColumns(onAdjust)}
+        data={data?.results}
+        loading={isLoading}
+        rowKey={(r) => r.id}
+        empty={<EmptyState icon={AlertTriangle} title="No items below threshold" description="All stocks look healthy." />}
+      />
+    </>
   );
 }
 
@@ -145,8 +174,27 @@ function MovementsTab() {
     { key: 'ref', header: 'Ref', render: (r) => <span className="font-mono text-xs">{r.reference || '—'}</span> },
     { key: 'who', header: 'By', render: (r) => r.created_by_name ?? '—' },
   ];
+  const exportColumns: ExportColumn<StockMovement>[] = [
+    { key: 'created_at', header: 'When', value: (r) => r.created_at },
+    { key: 'item_sku', header: 'SKU', value: (r) => r.item_sku },
+    { key: 'item_name', header: 'Item', value: (r) => r.item_name },
+    { key: 'item_unit', header: 'Unit', value: (r) => r.item_unit },
+    { key: 'reason', header: 'Reason', value: (r) => r.reason_display },
+    { key: 'quantity_delta', header: 'Quantity delta', value: (r) => Number(r.quantity_delta) },
+    { key: 'balance_after', header: 'Balance after', value: (r) => Number(r.balance_after) },
+    { key: 'reference', header: 'Reference', value: (r) => r.reference },
+    { key: 'note', header: 'Note', value: (r) => r.note },
+    { key: 'created_by', header: 'By', value: (r) => r.created_by_name ?? '' },
+  ];
   return (
     <>
+      <div className="px-5 pt-3 flex items-center justify-end">
+        <ExportMenu
+          filename="stock-movements"
+          columns={exportColumns}
+          fetchRows={() => fetchAllPaginated((p) => inventory.movements.list(p))}
+        />
+      </div>
       <DataTable
         columns={columns}
         data={list.data?.results}
@@ -251,10 +299,26 @@ function ProcessedStockTab() {
       r.is_low ? <span className="badge-red">Low</span> : <span className="badge-green">OK</span>
     )},
   ];
+  const exportColumns: ExportColumn<ProcessedMaterialStock>[] = [
+    { key: 'item_sku', header: 'SKU', value: (r) => r.item_sku },
+    { key: 'item_name', header: 'Item', value: (r) => r.item_name },
+    { key: 'item_unit', header: 'Unit', value: (r) => r.item_unit },
+    { key: 'quantity', header: 'On hand', value: (r) => Number(r.quantity) },
+    { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => Number(r.reorder_threshold) },
+    { key: 'is_low', header: 'Low stock', value: (r) => (r.is_low ? 'yes' : 'no') },
+  ];
   return (
     <>
-      <div className="px-5 pt-3">
+      <div className="px-5 pt-3 flex items-center justify-between gap-2">
         <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search processed materials…" />
+        <ExportMenu
+          filename="processed-stock"
+          columns={exportColumns}
+          fetchRows={() => fetchAllPaginated(
+            (p) => processedMaterials.stock.list(p),
+            list.search ? { search: list.search } : {},
+          )}
+        />
       </div>
       <DataTable
         columns={columns}

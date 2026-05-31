@@ -13,6 +13,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatMoney, formatNumber } from '@/lib/format';
 import type { RawMaterial } from '@/api/types';
 
@@ -95,12 +97,34 @@ export function RawMaterialsPage() {
     )},
   ];
 
+  const exportColumns: ExportColumn<RawMaterial>[] = [
+    { key: 'sku', header: 'SKU', value: (r) => r.sku },
+    { key: 'name', header: 'Name', value: (r) => r.name },
+    { key: 'unit', header: 'Unit', value: (r) => r.unit },
+    { key: 'unit_cost', header: 'Unit cost', value: (r) => Number(r.unit_cost) },
+    { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => Number(r.reorder_threshold) },
+    { key: 'preferred_supplier', header: 'Preferred supplier', value: (r) => r.preferred_supplier_name ?? '' },
+    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+  ];
+
   return (
     <>
       <PageHeader
         title="Raw materials"
         subtitle="Ingredients & supplies consumed by production"
-        actions={<button onClick={openCreate} className="btn-primary"><Plus size={16} /> New material</button>}
+        actions={
+          <>
+            <ExportMenu
+              filename="raw-materials"
+              columns={exportColumns}
+              fetchRows={() => fetchAllPaginated(
+                (p) => catalog.rawMaterials.list(p),
+                list.search ? { search: list.search } : {},
+              )}
+            />
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New material</button>
+          </>
+        }
       />
 
       <div className="card">

@@ -22,6 +22,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/lib/format';
 
 type Tab = 'materials' | 'batches' | 'movements';
@@ -163,11 +165,36 @@ function MaterialsTab() {
     )},
   ];
 
+  const exportColumns: ExportColumn<ProcessedMaterial>[] = [
+    { key: 'sku', header: 'SKU', value: (r) => r.sku },
+    { key: 'name', header: 'Name', value: (r) => r.name },
+    { key: 'unit', header: 'Unit', value: (r) => r.unit },
+    { key: 'yield_per_batch', header: 'Yield/batch', value: (r) => Number(r.yield_per_batch) },
+    { key: 'unit_cost', header: 'Unit cost', value: (r) => Number(r.unit_cost) },
+    { key: 'overhead_pct', header: 'Overhead %', value: (r) => Number(r.overhead_pct) },
+    { key: 'shelf_life_hours', header: 'Shelf life (h)', value: (r) => r.shelf_life_hours },
+    { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => Number(r.reorder_threshold) },
+    { key: 'stock_quantity', header: 'On hand', value: (r) => Number(r.stock_quantity) },
+    { key: 'is_low', header: 'Low stock', value: (r) => (r.is_low ? 'yes' : 'no') },
+    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+  ];
+
   return (
     <>
       <div className="px-5 pt-3 flex items-center justify-between gap-2">
         <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search processed materials…" />
-        <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New material</button>
+        <div className="flex items-center gap-2">
+          <ExportMenu
+            filename="processed-materials"
+            columns={exportColumns}
+            fetchRows={() => fetchAllPaginated(
+              (p) => processedMaterials.list(p),
+              list.search ? { search: list.search } : {},
+            )}
+          />
+          <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New material</button>
+        </div>
       </div>
       <DataTable
         columns={columns}
@@ -769,10 +796,31 @@ function BatchesTab() {
     { key: 'by', header: 'By', render: (r) => r.created_by_name ?? '—' },
   ];
 
+  const exportColumns: ExportColumn<ProcessedMaterialBatch>[] = [
+    { key: 'scheduled_for', header: 'Scheduled', value: (r) => r.scheduled_for },
+    { key: 'completed_at', header: 'Completed', value: (r) => r.completed_at ?? '' },
+    { key: 'processed_material_sku', header: 'Material SKU', value: (r) => r.processed_material_sku },
+    { key: 'processed_material_name', header: 'Material', value: (r) => r.processed_material_name },
+    { key: 'batches', header: 'Batches', value: (r) => Number(r.batches) },
+    { key: 'quantity_produced', header: 'Produced', value: (r) => Number(r.quantity_produced) },
+    { key: 'processed_material_unit', header: 'Unit', value: (r) => r.processed_material_unit },
+    { key: 'cost', header: 'Cost', value: (r) => Number(r.cost) },
+    { key: 'created_by', header: 'By', value: (r) => r.created_by_name ?? '' },
+    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+  ];
+
   return (
     <>
-      <div className="px-5 pt-3">
+      <div className="px-5 pt-3 flex items-center justify-between gap-2">
         <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search batches…" />
+        <ExportMenu
+          filename="processed-batches"
+          columns={exportColumns}
+          fetchRows={() => fetchAllPaginated(
+            (p) => processedMaterials.batches.list(p),
+            list.search ? { search: list.search } : {},
+          )}
+        />
       </div>
       <DataTable
         columns={columns}
@@ -815,8 +863,28 @@ function MovementsTab() {
     { key: 'who', header: 'By', render: (r) => r.created_by_name ?? '—' },
   ];
 
+  const exportColumns: ExportColumn<ProcessedMaterialStockMovement>[] = [
+    { key: 'created_at', header: 'When', value: (r) => r.created_at },
+    { key: 'item_sku', header: 'SKU', value: (r) => r.item_sku },
+    { key: 'item_name', header: 'Material', value: (r) => r.item_name },
+    { key: 'item_unit', header: 'Unit', value: (r) => r.item_unit },
+    { key: 'reason', header: 'Reason', value: (r) => r.reason_display },
+    { key: 'quantity_delta', header: 'Quantity delta', value: (r) => Number(r.quantity_delta) },
+    { key: 'balance_after', header: 'Balance after', value: (r) => Number(r.balance_after) },
+    { key: 'reference', header: 'Reference', value: (r) => r.reference },
+    { key: 'note', header: 'Note', value: (r) => r.note },
+    { key: 'created_by', header: 'By', value: (r) => r.created_by_name ?? '' },
+  ];
+
   return (
     <>
+      <div className="px-5 pt-3 flex items-center justify-end">
+        <ExportMenu
+          filename="processed-movements"
+          columns={exportColumns}
+          fetchRows={() => fetchAllPaginated((p) => processedMaterials.movements.list(p))}
+        />
+      </div>
       <DataTable
         columns={columns}
         data={list.data?.results}

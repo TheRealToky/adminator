@@ -13,6 +13,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatDate } from '@/lib/format';
 import type { User } from '@/api/types';
 
@@ -108,12 +110,33 @@ export function UsersPage() {
     )},
   ];
 
+  const exportColumns: ExportColumn<User>[] = [
+    { key: 'full_name', header: 'Name', value: (r) => r.full_name },
+    { key: 'email', header: 'Email', value: (r) => r.email },
+    { key: 'phone', header: 'Phone', value: (r) => r.phone },
+    { key: 'role', header: 'Role', value: (r) => r.role },
+    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+    { key: 'date_joined', header: 'Joined', value: (r) => r.date_joined },
+  ];
+
   return (
     <>
       <PageHeader
         title="Staff"
         subtitle="Internal users with role-based access"
-        actions={<button onClick={openCreate} className="btn-primary"><Plus size={16} /> New user</button>}
+        actions={
+          <>
+            <ExportMenu
+              filename="staff"
+              columns={exportColumns}
+              fetchRows={() => fetchAllPaginated(
+                (p) => usersApi.list(p),
+                list.search ? { search: list.search } : {},
+              )}
+            />
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New user</button>
+          </>
+        }
       />
       <div className="card">
         <div className="card-header">

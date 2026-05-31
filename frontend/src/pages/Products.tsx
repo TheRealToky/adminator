@@ -15,6 +15,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatMoney, formatNumber } from '@/lib/format';
 import type { Product, RawMaterial, RecipeItem } from '@/api/types';
 
@@ -106,12 +108,38 @@ export function ProductsPage() {
     )},
   ];
 
+  const exportColumns: ExportColumn<Product>[] = [
+    { key: 'sku', header: 'SKU', value: (r) => r.sku },
+    { key: 'name', header: 'Name', value: (r) => r.name },
+    { key: 'category', header: 'Category', value: (r) => r.category_name ?? '' },
+    { key: 'unit', header: 'Unit', value: (r) => r.unit },
+    { key: 'selling_price', header: 'Selling price', value: (r) => Number(r.selling_price) },
+    { key: 'production_cost', header: 'Production cost', value: (r) => Number(r.production_cost) },
+    { key: 'margin', header: 'Margin', value: (r) => Number(r.margin ?? 0) },
+    { key: 'overhead_pct', header: 'Overhead %', value: (r) => Number(r.overhead_pct ?? 0) },
+    { key: 'reorder_threshold', header: 'Reorder threshold', value: (r) => r.reorder_threshold },
+    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+    { key: 'description', header: 'Description', value: (r) => r.description },
+  ];
+
   return (
     <>
       <PageHeader
         title="Products"
         subtitle="Finished goods sold to customers"
-        actions={<button onClick={openCreate} className="btn-primary"><Plus size={16} /> New product</button>}
+        actions={
+          <>
+            <ExportMenu
+              filename="products"
+              columns={exportColumns}
+              fetchRows={() => fetchAllPaginated(
+                (p) => catalog.products.list(p),
+                list.search ? { search: list.search } : {},
+              )}
+            />
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New product</button>
+          </>
+        }
       />
 
       <div className="card">

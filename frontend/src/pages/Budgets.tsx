@@ -12,6 +12,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { Budget } from '@/api/types';
 
@@ -70,12 +72,28 @@ export function BudgetsPage() {
     )},
   ];
 
+  const exportColumns: ExportColumn<Budget>[] = [
+    { key: 'category', header: 'Category', value: (r) => r.category_name },
+    { key: 'month', header: 'Month', value: (r) => r.month },
+    { key: 'amount', header: 'Budgeted', value: (r) => Number(r.amount) },
+    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+  ];
+
   return (
     <>
       <PageHeader
         title="Budgets"
         subtitle="Monthly spending caps per expense category"
-        actions={<button onClick={openCreate} className="btn-primary"><Plus size={16} /> New budget</button>}
+        actions={
+          <>
+            <ExportMenu
+              filename="budgets"
+              columns={exportColumns}
+              fetchRows={() => fetchAllPaginated((p) => finance.budgets.list(p))}
+            />
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New budget</button>
+          </>
+        }
       />
       <div className="card">
         <DataTable columns={columns} data={list.data?.results} loading={list.isLoading} rowKey={(r) => r.id}

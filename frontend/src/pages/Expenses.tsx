@@ -13,6 +13,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { Expense, ExpenseCategory } from '@/api/types';
 
@@ -124,11 +126,33 @@ function ExpensesTab() {
     )},
   ];
 
+  const exportColumns: ExportColumn<Expense>[] = [
+    { key: 'incurred_on', header: 'Date', value: (r) => r.incurred_on },
+    { key: 'title', header: 'Title', value: (r) => r.title },
+    { key: 'category', header: 'Category', value: (r) => r.category_name },
+    { key: 'amount', header: 'Amount', value: (r) => Number(r.amount) },
+    { key: 'payment_method', header: 'Payment', value: (r) => r.payment_method_display },
+    { key: 'supplier', header: 'Supplier', value: (r) => r.supplier_name ?? '' },
+    { key: 'reference', header: 'Reference', value: (r) => r.reference },
+    { key: 'recorded_by', header: 'Recorded by', value: (r) => r.recorded_by_name ?? '' },
+    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+  ];
+
   return (
     <>
-      <div className="px-5 pt-3 flex items-center justify-between">
+      <div className="px-5 pt-3 flex items-center justify-between gap-2">
         <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search expenses…" />
-        <button onClick={openCreate} className="btn-primary"><Plus size={16} /> Record expense</button>
+        <div className="flex items-center gap-2">
+          <ExportMenu
+            filename="expenses"
+            columns={exportColumns}
+            fetchRows={() => fetchAllPaginated(
+              (p) => finance.expenses.list(p),
+              list.search ? { search: list.search } : {},
+            )}
+          />
+          <button onClick={openCreate} className="btn-primary"><Plus size={16} /> Record expense</button>
+        </div>
       </div>
       <DataTable
         columns={columns} data={list.data?.results}
@@ -308,13 +332,29 @@ function CategoriesTab() {
     )},
   ];
 
+  const exportColumns: ExportColumn<ExpenseCategory>[] = [
+    { key: 'name', header: 'Name', value: (r) => r.name },
+    { key: 'description', header: 'Description', value: (r) => r.description },
+    { key: 'is_active', header: 'Active', value: (r) => (r.is_active ? 'yes' : 'no') },
+  ];
+
   return (
     <>
-      <div className="px-5 pt-3 flex items-center justify-between">
+      <div className="px-5 pt-3 flex items-center justify-between gap-2">
         <SearchBar value={list.search} onChange={list.setSearch} placeholder="Search categories…" />
-        <button onClick={() => { setEditing(null); setForm({ name: '', description: '', is_active: true }); setOpen(true); }} className="btn-primary">
-          <Plus size={16} /> New category
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportMenu
+            filename="expense-categories"
+            columns={exportColumns}
+            fetchRows={() => fetchAllPaginated(
+              (p) => finance.expenseCategories.list(p),
+              list.search ? { search: list.search } : {},
+            )}
+          />
+          <button onClick={() => { setEditing(null); setForm({ name: '', description: '', is_active: true }); setOpen(true); }} className="btn-primary">
+            <Plus size={16} /> New category
+          </button>
+        </div>
       </div>
       <DataTable columns={columns} data={list.data?.results} loading={list.isLoading} rowKey={(r) => r.id}
         empty={<EmptyState icon={Folder} title="No categories yet" />} />

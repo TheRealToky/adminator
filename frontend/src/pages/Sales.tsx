@@ -13,6 +13,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatDateTime, formatMoney, formatNumber } from '@/lib/format';
 import type { Product, Sale } from '@/api/types';
 
@@ -100,12 +102,41 @@ export function SalesPage() {
     )},
   ];
 
+  const exportColumns: ExportColumn<Sale>[] = [
+    { key: 'occurred_at', header: 'When', value: (r) => r.occurred_at },
+    { key: 'receipt_number', header: 'Receipt', value: (r) => r.receipt_number },
+    { key: 'customer_name', header: 'Customer', value: (r) => r.customer_name },
+    { key: 'customer_phone', header: 'Phone', value: (r) => r.customer_phone },
+    { key: 'payment_method', header: 'Payment method', value: (r) => r.payment_method_display },
+    { key: 'channel', header: 'Channel', value: (r) => r.channel_display },
+    { key: 'item_count', header: 'Items', value: (r) => r.items.length },
+    { key: 'subtotal', header: 'Subtotal', value: (r) => Number(r.subtotal) },
+    { key: 'discount', header: 'Discount', value: (r) => Number(r.discount) },
+    { key: 'total', header: 'Total', value: (r) => Number(r.total) },
+    { key: 'cost_of_goods', header: 'COGS', value: (r) => Number(r.cost_of_goods) },
+    { key: 'profit', header: 'Profit', value: (r) => Number(r.profit) },
+    { key: 'served_by', header: 'Served by', value: (r) => r.served_by_name ?? '' },
+    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+  ];
+
   return (
     <>
       <PageHeader
         title="Sales"
         subtitle="Record receipts; stock and profit update automatically."
-        actions={<button onClick={() => setOpen(true)} className="btn-primary"><Plus size={16} /> New sale</button>}
+        actions={
+          <>
+            <ExportMenu
+              filename="sales"
+              columns={exportColumns}
+              fetchRows={() => fetchAllPaginated(
+                (p) => sales.list(p),
+                list.search ? { search: list.search } : {},
+              )}
+            />
+            <button onClick={() => setOpen(true)} className="btn-primary"><Plus size={16} /> New sale</button>
+          </>
+        }
       />
 
       <div className="card">

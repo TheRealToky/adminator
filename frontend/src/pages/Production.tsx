@@ -13,6 +13,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/lib/format';
 import type { ProductionRun } from '@/api/types';
 
@@ -80,15 +82,37 @@ export function ProductionPage() {
     )},
   ];
 
+  const exportColumns: ExportColumn<ProductionRun>[] = [
+    { key: 'scheduled_for', header: 'Scheduled', value: (r) => r.scheduled_for },
+    { key: 'completed_at', header: 'Completed', value: (r) => r.completed_at ?? '' },
+    { key: 'product_sku', header: 'Product SKU', value: (r) => r.product_sku },
+    { key: 'product_name', header: 'Product', value: (r) => r.product_name },
+    { key: 'quantity', header: 'Quantity', value: (r) => Number(r.quantity) },
+    { key: 'cost', header: 'Cost', value: (r) => Number(r.cost) },
+    { key: 'status', header: 'Status', value: (r) => r.status },
+    { key: 'created_by', header: 'By', value: (r) => r.created_by_name ?? '' },
+    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+  ];
+
   return (
     <>
       <PageHeader
         title="Production"
         subtitle="Bake & cook runs — automatically consumes raw materials"
         actions={
-          <button onClick={() => setOpen(true)} className="btn-primary">
-            <PlayCircle size={16} /> New run
-          </button>
+          <>
+            <ExportMenu
+              filename="production-runs"
+              columns={exportColumns}
+              fetchRows={() => fetchAllPaginated(
+                (p) => production.runs.list(p),
+                list.search ? { search: list.search } : {},
+              )}
+            />
+            <button onClick={() => setOpen(true)} className="btn-primary">
+              <PlayCircle size={16} /> New run
+            </button>
+          </>
         }
       />
       <div className="card">

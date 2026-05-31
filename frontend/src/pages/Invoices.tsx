@@ -13,6 +13,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { Invoice } from '@/api/types';
 
@@ -125,12 +127,41 @@ export function InvoicesPage() {
     )},
   ];
 
+  const exportColumns: ExportColumn<Invoice>[] = [
+    { key: 'invoice_number', header: 'Invoice #', value: (r) => r.invoice_number },
+    { key: 'customer_name', header: 'Customer', value: (r) => r.customer_name },
+    { key: 'customer_email', header: 'Email', value: (r) => r.customer_email },
+    { key: 'customer_phone', header: 'Phone', value: (r) => r.customer_phone },
+    { key: 'issue_date', header: 'Issued', value: (r) => r.issue_date },
+    { key: 'due_date', header: 'Due', value: (r) => r.due_date },
+    { key: 'amount', header: 'Amount', value: (r) => Number(r.amount) },
+    { key: 'amount_paid', header: 'Paid', value: (r) => Number(r.amount_paid) },
+    { key: 'balance_due', header: 'Balance', value: (r) => Number(r.balance_due) },
+    { key: 'status', header: 'Status', value: (r) => r.status_display },
+    { key: 'is_overdue', header: 'Overdue', value: (r) => (r.is_overdue ? 'yes' : 'no') },
+    { key: 'paid_at', header: 'Paid at', value: (r) => r.paid_at ?? '' },
+    { key: 'description', header: 'Description', value: (r) => r.description },
+    { key: 'notes', header: 'Notes', value: (r) => r.notes },
+  ];
+
   return (
     <>
       <PageHeader
         title="Invoices"
         subtitle="Outbound invoicing and payment follow-up"
-        actions={<button onClick={openCreate} className="btn-primary"><Plus size={16} /> New invoice</button>}
+        actions={
+          <>
+            <ExportMenu
+              filename="invoices"
+              columns={exportColumns}
+              fetchRows={() => fetchAllPaginated(
+                (p) => finance.invoices.list(p),
+                list.search ? { search: list.search } : {},
+              )}
+            />
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> New invoice</button>
+          </>
+        }
       />
 
       <div className="card">

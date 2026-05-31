@@ -1,0 +1,129 @@
+import * as XLSX from 'xlsx';
+
+import type { Paginated } from '@/api/types';
+
+export type ExportFormat = 'csv' | 'xlsx' | 'json';
+
+export type ExportCell = string | number | boolean | null | undefined;
+
+export interface ExportColumn<T> {
+  key: string;
+  header: string;
+  value: (row: T) => ExportCell;
+}
+
+const FETCH_PAGE_SIZE = 500;
+
+export async function fetchAllPaginated<T>(
+  fetcher: (params: Record<string, unknown>) => Promise<Paginated<T>>,
+  baseParams: Record<string, unknown> = {},
+): Promise<T[]> {
+  const first = await fetcher({ ...baseParams, page: 1, page_size: FETCH_PAGE_SIZE });
+  const rows: T[] = [...first.results];
+  const total = first.count ?? rows.length;
+  let page = 2;
+  while (rows.length < total && first.next !== null) {
+    const next = await fetcher({ ...baseParams, page, page_size: FETCH_PAGE_SIZE });
+    rows.push(...next.results);
+    if (next.next === null || next.results.length === 0) break;
+    page += 1;
+  }
+  return rows;
+}
+
+function toCellValue(cell: ExportCell): string | number | boolean {
+  if (cell === null || cell === undefined) return '';
+  return cell;
+}
+
+function csvEscape(value: ExportCell): string {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  if (/[",\n\r]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function buildCsv<T>(rows: T[], columns: ExportColumn<T>[]): string {
+  const header = columns.map((c) => csvEscape(c.header)).join(',');
+  const body = rows
+    .map((row) => columns.map((c) => csvEscape(c.value(row))).join(','))
+    .join('\n');
+  return `${header}\n${body}`;
+}
+
+function buildJson<T>(rows: T[], columns: ExportColumn<T>[]): string {
+  const objects = rows.map((row) =>
+    columns.reduce<Record<string, ExportCell>>((acc, c) => {
+      acc[c.key] = c.value(row);
+      return acc;
+    }, {}),
+  );
+  return JSON.stringify(objects, null, 2);
+}
+
+function buildXlsx<T>(rows: T[], columns: ExportColumn<T>[], sheetName: string): ArrayBuffer {
+  const aoa: (string | number | boolean)[][] = [
+    columns.map((c) => c.header),
+    ...rows.map((row) => columns.map((c) => toCellValue(c.value(row)))),
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+  worksheet['!cols'] = columns.map((c) => ({
+    wch: Math.max(c.header.length + 2, 12),
+  }));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31) || 'Sheet1');
+  return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function timestamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}` +
+    `-${pad(d.getHours())}${pad(d.getMinutes())}`
+  );
+}
+
+export function exportRows<T>(
+  rows: T[],
+  columns: ExportColumn<T>[],
+  format: ExportFormat,
+  filename: string,
+) {
+  const stamp = timestamp();
+  const sheetName = filename.replace(/[^a-z0-9_-]+/gi, '_').slice(0, 31) || 'data';
+
+  if (format === 'csv') {
+    const csv = buildCsv(rows, columns);
+    // Prepend UTF-8 BOM so Excel opens accented characters correctly.
+    const blob = new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8;' });
+    triggerDownload(blob, `${filename}-${stamp}.csv`);
+    return;
+  }
+
+  if (format === 'json') {
+    const json = buildJson(rows, columns);
+    const blob = new Blob([json], { type: 'application/json' });
+    triggerDownload(blob, `${filename}-${stamp}.json`);
+    return;
+  }
+
+  const buffer = buildXlsx(rows, columns, sheetName);
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  triggerDownload(blob, `${filename}-${stamp}.xlsx`);
+}
