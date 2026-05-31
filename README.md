@@ -265,9 +265,3 @@ This repo runs in dev mode out of the box. Before shipping:
    analysts to share the box; protect it with a strong token / VPN.
 7. **DB backups** — `pg_dump` on a schedule; for serious use, point Postgres
    at a managed service.
-
----
-
-## License
-
-MIT — do whatever you like with it.
