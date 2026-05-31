@@ -1,0 +1,32 @@
+"""Root URL routing for the Adminator backend."""
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
+
+api_v1_patterns = [
+    path("auth/", include("apps.accounts.urls")),
+    path("catalog/", include("apps.catalog.urls")),
+    path("inventory/", include("apps.inventory.urls")),
+    path("production/", include("apps.production.urls")),
+    path("sales/", include("apps.sales.urls")),
+    path("finance/", include("apps.finance.urls")),
+    path("analytics/", include("apps.analytics.urls")),
+    path("processed-materials/", include("apps.processed_materials.urls")),
+]
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("api/v1/", include((api_v1_patterns, "api"), namespace="v1")),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger"),
+    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

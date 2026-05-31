@@ -1,0 +1,76 @@
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.installed.cfg
+*.egg
+*.manifest
+*.spec
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# ── Virtualenvs ───────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Django ────────────────────────────────────────────────────────────────
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# ── Node ──────────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Frontend build ────────────────────────────────────────────────────────
+frontend/dist/
+frontend/build/
+frontend/.vite/
+.next/
+out/
+
+# ── Env files ─────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Jupyter ───────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+notebooks/data/
+notebooks/exports/
+
+# ── Editors / OS ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Docker volumes ────────────────────────────────────────────────────────
+postgres_data/
+.docker/

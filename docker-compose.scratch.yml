@@ -1,0 +1,47 @@
+name: adminator-scratch
+
+services:
+  postgres:
+    container_name: adminator-scratch-postgres
+    env_file: .env.scratch
+    ports: !override
+      - "5433:5432"
+    volumes: !override
+      - postgres_data_scratch:/var/lib/postgresql/data
+
+  backend:
+    container_name: adminator-scratch-backend
+    env_file: .env.scratch
+    ports: !override
+      - "8001:8000"
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py bootstrap_admin &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+  frontend:
+    container_name: adminator-scratch-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8001/api/v1
+        VITE_APP_NAME: Adminator (scratch)
+    ports: !override
+      - "5174:80"
+
+  jupyter:
+    container_name: adminator-scratch-jupyter
+    env_file: .env.scratch
+    ports: !override
+      - "8889:8888"
+
+volumes:
+  postgres_data_scratch:
+    name: adminator_scratch_postgres_data
+
+networks:
+  adminator-net:
+    name: adminator-scratch-net

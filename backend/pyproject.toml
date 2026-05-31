@@ -1,0 +1,42 @@
+[project]
+name = "adminator-backend"
+version = "0.1.0"
+description = "Adminator — admin & finance backend for a small bakery"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.1,<5.2",
+    "djangorestframework>=3.15,<4",
+    "djangorestframework-simplejwt>=5.3,<6",
+    "django-cors-headers>=4.4,<5",
+    "django-filter>=24.3,<25",
+    "drf-spectacular>=0.27,<1",
+    "psycopg[binary]>=3.2,<4",
+    "python-dotenv>=1.0,<2",
+    "Pillow>=10.4,<12",
+    "gunicorn>=23.0,<24",
+    "whitenoise>=6.7,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-django>=4.9,<5",
+    "pytest-cov>=5.0,<6",
+    "ruff>=0.6,<1",
+    "ipython>=8.27,<9",
+    "factory-boy>=3.3,<4",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ", "PL", "RUF"]
+ignore = ["PLR0913", "PLR2004", "DJ001"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.dev"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "--reuse-db --tb=short"
