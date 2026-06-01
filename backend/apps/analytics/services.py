@@ -16,7 +16,7 @@ from django.db.models.functions import Coalesce, ExtractHour, TruncDate
 from django.utils import timezone
 
 from apps.catalog.models import Product
-from apps.finance.models import Expense, Invoice, InvoiceStatus
+from apps.finance.models import Expense, Invoice, InvoiceStatus, Transaction, TransactionDirection
 from apps.inventory.models import ItemKind, StockItem
 from apps.production.models import ProductionRun, ProductionStatus
 from apps.sales.models import Sale, SaleItem
@@ -49,13 +49,29 @@ def kpi_summary(days: int = 30) -> dict:
         incurred_on__gte=start.date(), incurred_on__lt=end.date() + timedelta(days=1)
     ).aggregate(total=Coalesce(Sum("amount"), _decimal_zero()))
 
-    revenue = Decimal(current_sales["revenue"])
+    current_tx = Transaction.objects.filter(
+        occurred_on__gte=start.date(), occurred_on__lt=end.date() + timedelta(days=1)
+    )
+    current_income_tx = current_tx.filter(direction=TransactionDirection.INCOME).aggregate(
+        total=Coalesce(Sum("amount"), _decimal_zero()),
+    )["total"]
+    current_expense_tx = current_tx.filter(direction=TransactionDirection.EXPENSE).aggregate(
+        total=Coalesce(Sum("amount"), _decimal_zero()),
+    )["total"]
+    prev_income_tx = Transaction.objects.filter(
+        occurred_on__gte=prev_start.date(), occurred_on__lt=start.date(),
+        direction=TransactionDirection.INCOME,
+    ).aggregate(total=Coalesce(Sum("amount"), _decimal_zero()))["total"]
+
+    sales_revenue = Decimal(current_sales["revenue"])
+    income_tx_total = Decimal(current_income_tx)
+    revenue = sales_revenue + income_tx_total
     cogs = Decimal(current_sales["cogs"])
-    expenses = Decimal(current_expenses["total"])
+    expenses = Decimal(current_expenses["total"]) + Decimal(current_expense_tx)
     gross_profit = revenue - cogs
     net_profit = gross_profit - expenses
 
-    prev_revenue = Decimal(previous_sales["revenue"])
+    prev_revenue = Decimal(previous_sales["revenue"]) + Decimal(prev_income_tx)
     revenue_change_pct = (
         float(((revenue - prev_revenue) / prev_revenue) * 100) if prev_revenue else None
     )
@@ -68,14 +84,14 @@ def kpi_summary(days: int = 30) -> dict:
         "operating_expenses": expenses,
         "net_profit": net_profit,
         "receipts": current_sales["receipts"],
-        "average_ticket": (revenue / current_sales["receipts"]) if current_sales["receipts"] else Decimal("0"),
+        "average_ticket": (sales_revenue / current_sales["receipts"]) if current_sales["receipts"] else Decimal("0"),
         "revenue_change_pct": revenue_change_pct,
     }
 
 
 def sales_timeseries(days: int = 30) -> list[dict]:
     start, end = _range_from(days)
-    rows = (
+    sale_rows = (
         Sale.objects.filter(occurred_at__gte=start, occurred_at__lt=end)
         .annotate(day=TruncDate("occurred_at"))
         .values("day")
@@ -84,18 +100,39 @@ def sales_timeseries(days: int = 30) -> list[dict]:
             cogs=Coalesce(Sum("cost_of_goods"), _decimal_zero()),
             receipts=Count("id"),
         )
-        .order_by("day")
     )
-    out = []
-    for r in rows:
-        revenue = Decimal(r["revenue"])
-        cogs = Decimal(r["cogs"])
-        out.append({
-            "day": r["day"].isoformat(),
-            "revenue": revenue,
-            "cost_of_goods": cogs,
-            "profit": revenue - cogs,
+    tx_rows = (
+        Transaction.objects.filter(
+            occurred_on__gte=start.date(), occurred_on__lt=end.date() + timedelta(days=1),
+            direction=TransactionDirection.INCOME,
+        )
+        .values(day=F("occurred_on"))
+        .annotate(extra_revenue=Coalesce(Sum("amount"), _decimal_zero()))
+    )
+
+    by_day: dict[date, dict] = {}
+    for r in sale_rows:
+        by_day[r["day"]] = {
+            "revenue": Decimal(r["revenue"]),
+            "cogs": Decimal(r["cogs"]),
             "receipts": r["receipts"],
+        }
+    for r in tx_rows:
+        entry = by_day.setdefault(
+            r["day"],
+            {"revenue": Decimal("0"), "cogs": Decimal("0"), "receipts": 0},
+        )
+        entry["revenue"] += Decimal(r["extra_revenue"])
+
+    out = []
+    for day in sorted(by_day):
+        e = by_day[day]
+        out.append({
+            "day": day.isoformat(),
+            "revenue": e["revenue"],
+            "cost_of_goods": e["cogs"],
+            "profit": e["revenue"] - e["cogs"],
+            "receipts": e["receipts"],
         })
     return out
 
@@ -279,22 +316,34 @@ def production_summary(days: int = 30) -> dict:
 
 def expense_breakdown(days: int = 30) -> list[dict]:
     start, end = _range_from(days)
-    rows = (
+    expense_rows = (
         Expense.objects.filter(
             incurred_on__gte=start.date(), incurred_on__lt=end.date() + timedelta(days=1)
         )
         .values("category_id", "category__name")
         .annotate(total=Coalesce(Sum("amount"), _decimal_zero()))
-        .order_by("-total")
     )
-    return [
-        {
-            "category_id": str(r["category_id"]),
-            "name": r["category__name"],
-            "total": Decimal(r["total"]),
-        }
-        for r in rows
-    ]
+    tx_rows = (
+        Transaction.objects.filter(
+            occurred_on__gte=start.date(), occurred_on__lt=end.date() + timedelta(days=1),
+            direction=TransactionDirection.EXPENSE,
+        )
+        .values("category_id", "category__name")
+        .annotate(total=Coalesce(Sum("amount"), _decimal_zero()))
+    )
+
+    combined: dict[str, dict] = {}
+    for r in list(expense_rows) + list(tx_rows):
+        key = str(r["category_id"])
+        if key in combined:
+            combined[key]["total"] += Decimal(r["total"])
+        else:
+            combined[key] = {
+                "category_id": key,
+                "name": r["category__name"],
+                "total": Decimal(r["total"]),
+            }
+    return sorted(combined.values(), key=lambda x: -x["total"])
 
 
 def invoices_status_breakdown() -> dict:

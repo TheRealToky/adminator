@@ -11,6 +11,7 @@ import { InventoryPage } from './pages/Inventory';
 import { ProductionPage } from './pages/Production';
 import { SalesPage } from './pages/Sales';
 import { ExpensesPage } from './pages/Expenses';
+import { TransactionsPage } from './pages/Transactions';
 import { InvoicesPage } from './pages/Invoices';
 import { BudgetsPage } from './pages/Budgets';
 import { UsersPage } from './pages/Users';
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="processed-materials" element={<ProcessedMaterialsPage />} />
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="transactions" element={<TransactionsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="budgets" element={<BudgetsPage />} />
         <Route path="users" element={<UsersPage />} />

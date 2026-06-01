@@ -2,7 +2,7 @@ import { api } from './client';
 import type {
   Budget, Choice, DashboardOverview, Expense, ExpenseCategory, Invoice, LoginResponse,
   Paginated, Product, ProductCategory, ProductionRun, RawMaterial, RecipeItem,
-  Sale, StockItem, StockMovement, Supplier, User,
+  Sale, StockItem, StockMovement, Supplier, Transaction, TransactionCategory, User,
 } from './types';
 
 // ── Auth ──────────────────────────────────────────────────────────────────
@@ -184,6 +184,24 @@ export const finance = {
     update: (id: string, data: Partial<Budget>) =>
       api.patch<Budget>(`/finance/budgets/${id}/`, data).then((r) => r.data),
     remove: (id: string) => api.delete(`/finance/budgets/${id}/`),
+  },
+  transactionCategories: {
+    list: (params = {}) =>
+      api.get<Paginated<TransactionCategory>>('/finance/transaction-categories/', { params }).then((r) => r.data),
+    create: (data: Partial<TransactionCategory>) =>
+      api.post<TransactionCategory>('/finance/transaction-categories/', data).then((r) => r.data),
+    update: (id: string, data: Partial<TransactionCategory>) =>
+      api.patch<TransactionCategory>(`/finance/transaction-categories/${id}/`, data).then((r) => r.data),
+    remove: (id: string) => api.delete(`/finance/transaction-categories/${id}/`),
+  },
+  transactions: {
+    list: (params = {}) =>
+      api.get<Paginated<Transaction>>('/finance/transactions/', { params }).then((r) => r.data),
+    create: (data: Partial<Transaction>) =>
+      api.post<Transaction>('/finance/transactions/', data).then((r) => r.data),
+    update: (id: string, data: Partial<Transaction>) =>
+      api.patch<Transaction>(`/finance/transactions/${id}/`, data).then((r) => r.data),
+    remove: (id: string) => api.delete(`/finance/transactions/${id}/`),
   },
 };
 

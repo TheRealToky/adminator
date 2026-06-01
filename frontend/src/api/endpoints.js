@@ -116,6 +116,18 @@ export const finance = {
         update: (id, data) => api.patch(`/finance/budgets/${id}/`, data).then((r) => r.data),
         remove: (id) => api.delete(`/finance/budgets/${id}/`),
     },
+    transactionCategories: {
+        list: (params = {}) => api.get('/finance/transaction-categories/', { params }).then((r) => r.data),
+        create: (data) => api.post('/finance/transaction-categories/', data).then((r) => r.data),
+        update: (id, data) => api.patch(`/finance/transaction-categories/${id}/`, data).then((r) => r.data),
+        remove: (id) => api.delete(`/finance/transaction-categories/${id}/`),
+    },
+    transactions: {
+        list: (params = {}) => api.get('/finance/transactions/', { params }).then((r) => r.data),
+        create: (data) => api.post('/finance/transactions/', data).then((r) => r.data),
+        update: (id, data) => api.patch(`/finance/transactions/${id}/`, data).then((r) => r.data),
+        remove: (id) => api.delete(`/finance/transactions/${id}/`),
+    },
 };
 // ── Analytics ─────────────────────────────────────────────────────────────
 export const analytics = {

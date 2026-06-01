@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import Budget, Expense, ExpenseCategory, Invoice
+from .models import (
+    Budget,
+    Expense,
+    ExpenseCategory,
+    Invoice,
+    Transaction,
+    TransactionCategory,
+)
 
 
 @admin.register(ExpenseCategory)
@@ -31,3 +38,18 @@ class BudgetAdmin(admin.ModelAdmin):
     list_display = ("category", "month", "amount")
     list_filter = ("category", "month")
     autocomplete_fields = ("category",)
+
+
+@admin.register(TransactionCategory)
+class TransactionCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "direction", "is_active")
+    list_filter = ("direction", "is_active")
+    search_fields = ("name",)
+
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    list_display = ("title", "direction", "category", "amount", "occurred_on", "payment_method")
+    list_filter = ("direction", "category", "payment_method", "occurred_on")
+    search_fields = ("title", "counterparty", "reference", "notes")
+    autocomplete_fields = ("category", "recorded_by")

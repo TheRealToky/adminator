@@ -70,6 +70,7 @@
     "processedMaterials": "Processed materials",
     "rawMaterials": "Raw materials",
     "suppliers": "Suppliers",
+    "transactions": "Transactions",
     "expenses": "Expenses",
     "invoices": "Invoices",
     "budgets": "Budgets",
@@ -566,6 +567,99 @@
       "amount": "Amount",
       "payment": "Payment",
       "supplier": "Supplier",
+      "reference": "Reference",
+      "recordedBy": "Recorded by",
+      "notes": "Notes",
+      "name": "Name",
+      "description": "Description",
+      "active": "Active"
+    }
+  },
+  "transactions": {
+    "title": "Transactions",
+    "subtitle": "Manual income and expense entries",
+    "tabs": {
+      "transactions": "transactions",
+      "categories": "categories"
+    },
+    "directions": {
+      "income": "Income",
+      "expense": "Expense"
+    },
+    "filters": {
+      "all": "All",
+      "income": "Income",
+      "expense": "Expense"
+    },
+    "list": {
+      "newIncome": "Record income",
+      "newExpense": "Record expense",
+      "searchPlaceholder": "Search transactions…",
+      "emptyTitle": "No transactions recorded",
+      "emptyDescription": "Track income and expenses as they happen.",
+      "deleteTitle": "Delete transaction?",
+      "deleteMessage": "Remove \"{{title}}\"?",
+      "created": "Transaction recorded.",
+      "updated": "Transaction updated.",
+      "categoryCreated": "Category created.",
+      "newModal": "Record transaction",
+      "editModal": "Edit transaction"
+    },
+    "categories": {
+      "new": "New category",
+      "newModal": "New category",
+      "editModal": "Edit category",
+      "searchPlaceholder": "Search categories…",
+      "emptyTitle": "No categories yet",
+      "deleteTitle": "Delete category?",
+      "deleteMessage": "Remove \"{{name}}\"?",
+      "created": "Category created.",
+      "updated": "Category updated."
+    },
+    "columns": {
+      "date": "Date",
+      "direction": "Type",
+      "title": "Title",
+      "category": "Category",
+      "amount": "Amount",
+      "payment": "Payment",
+      "counterparty": "Customer / Supplier",
+      "name": "Name",
+      "description": "Description",
+      "status": "Status"
+    },
+    "fields": {
+      "direction": "Type",
+      "title": "Title",
+      "category": "Category",
+      "new": "New",
+      "categoryNamePlaceholder": "Category name",
+      "noneYet": "— None yet — click + New —",
+      "amount": "Amount",
+      "date": "Date",
+      "paymentMethod": "Payment method",
+      "paymentMethods": {
+        "cash": "Cash",
+        "mobile_money": "Mobile Money",
+        "card": "Card",
+        "bank_transfer": "Bank Transfer"
+      },
+      "customerOptional": "Customer (optional)",
+      "supplierOptional": "Supplier (optional)",
+      "reference": "Reference / receipt #",
+      "notes": "Notes",
+      "name": "Name",
+      "description": "Description"
+    },
+    "exportCols": {
+      "date": "Date",
+      "direction": "Type",
+      "title": "Title",
+      "category": "Category",
+      "amount": "Amount",
+      "signedAmount": "Signed amount",
+      "payment": "Payment",
+      "counterparty": "Customer / Supplier",
       "reference": "Reference",
       "recordedBy": "Recorded by",
       "notes": "Notes",

@@ -70,6 +70,7 @@
     "processedMaterials": "Matières transformées",
     "rawMaterials": "Matières premières",
     "suppliers": "Fournisseurs",
+    "transactions": "Transactions",
     "expenses": "Dépenses",
     "invoices": "Factures",
     "budgets": "Budgets",
@@ -566,6 +567,99 @@
       "amount": "Montant",
       "payment": "Paiement",
       "supplier": "Fournisseur",
+      "reference": "Référence",
+      "recordedBy": "Enregistré par",
+      "notes": "Notes",
+      "name": "Nom",
+      "description": "Description",
+      "active": "Actif"
+    }
+  },
+  "transactions": {
+    "title": "Transactions",
+    "subtitle": "Entrées manuelles de revenus et de dépenses",
+    "tabs": {
+      "transactions": "transactions",
+      "categories": "catégories"
+    },
+    "directions": {
+      "income": "Revenu",
+      "expense": "Dépense"
+    },
+    "filters": {
+      "all": "Toutes",
+      "income": "Revenus",
+      "expense": "Dépenses"
+    },
+    "list": {
+      "newIncome": "Enregistrer un revenu",
+      "newExpense": "Enregistrer une dépense",
+      "searchPlaceholder": "Rechercher des transactions…",
+      "emptyTitle": "Aucune transaction enregistrée",
+      "emptyDescription": "Suivez revenus et dépenses en temps réel.",
+      "deleteTitle": "Supprimer la transaction ?",
+      "deleteMessage": "Supprimer « {{title}} » ?",
+      "created": "Transaction enregistrée.",
+      "updated": "Transaction mise à jour.",
+      "categoryCreated": "Catégorie créée.",
+      "newModal": "Enregistrer une transaction",
+      "editModal": "Modifier la transaction"
+    },
+    "categories": {
+      "new": "Nouvelle catégorie",
+      "newModal": "Nouvelle catégorie",
+      "editModal": "Modifier la catégorie",
+      "searchPlaceholder": "Rechercher des catégories…",
+      "emptyTitle": "Aucune catégorie",
+      "deleteTitle": "Supprimer la catégorie ?",
+      "deleteMessage": "Supprimer « {{name}} » ?",
+      "created": "Catégorie créée.",
+      "updated": "Catégorie mise à jour."
+    },
+    "columns": {
+      "date": "Date",
+      "direction": "Type",
+      "title": "Intitulé",
+      "category": "Catégorie",
+      "amount": "Montant",
+      "payment": "Paiement",
+      "counterparty": "Client / Fournisseur",
+      "name": "Nom",
+      "description": "Description",
+      "status": "Statut"
+    },
+    "fields": {
+      "direction": "Type",
+      "title": "Intitulé",
+      "category": "Catégorie",
+      "new": "Nouveau",
+      "categoryNamePlaceholder": "Nom de la catégorie",
+      "noneYet": "— Aucune encore — cliquez + Nouveau —",
+      "amount": "Montant",
+      "date": "Date",
+      "paymentMethod": "Mode de paiement",
+      "paymentMethods": {
+        "cash": "Espèces",
+        "mobile_money": "Mobile Money",
+        "card": "Carte",
+        "bank_transfer": "Virement bancaire"
+      },
+      "customerOptional": "Client (optionnel)",
+      "supplierOptional": "Fournisseur (optionnel)",
+      "reference": "Référence / n° de reçu",
+      "notes": "Notes",
+      "name": "Nom",
+      "description": "Description"
+    },
+    "exportCols": {
+      "date": "Date",
+      "direction": "Type",
+      "title": "Intitulé",
+      "category": "Catégorie",
+      "amount": "Montant",
+      "signedAmount": "Montant signé",
+      "payment": "Paiement",
+      "counterparty": "Client / Fournisseur",
       "reference": "Référence",
       "recordedBy": "Enregistré par",
       "notes": "Notes",

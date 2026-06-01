@@ -185,6 +185,36 @@ export interface Expense {
   recorded_by_name: string | null;
 }
 
+export type TransactionDirection = 'income' | 'expense';
+
+export interface TransactionCategory {
+  id: UUID;
+  name: string;
+  direction: TransactionDirection;
+  direction_display: string;
+  description: string;
+  is_active: boolean;
+}
+
+export interface Transaction {
+  id: UUID;
+  direction: TransactionDirection;
+  direction_display: string;
+  category: UUID;
+  category_name: string;
+  category_direction: TransactionDirection;
+  title: string;
+  amount: string;
+  occurred_on: string;
+  payment_method: string;
+  payment_method_display: string;
+  counterparty: string;
+  reference: string;
+  notes: string;
+  recorded_by: UUID | null;
+  recorded_by_name: string | null;
+}
+
 export interface Invoice {
   id: UUID;
   invoice_number: string;

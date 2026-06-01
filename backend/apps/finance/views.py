@@ -9,13 +9,23 @@ from rest_framework.response import Response
 
 from apps.core.permissions import ReadOnlyOrManager
 
-from .models import Budget, Expense, ExpenseCategory, Invoice, InvoiceStatus
+from .models import (
+    Budget,
+    Expense,
+    ExpenseCategory,
+    Invoice,
+    InvoiceStatus,
+    Transaction,
+    TransactionCategory,
+)
 from .serializers import (
     BudgetSerializer,
     ExpenseCategorySerializer,
     ExpenseSerializer,
     InvoicePaymentSerializer,
     InvoiceSerializer,
+    TransactionCategorySerializer,
+    TransactionSerializer,
 )
 
 
@@ -78,6 +88,24 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice.status = InvoiceStatus.CANCELLED
         invoice.save(update_fields=["status", "updated_at"])
         return Response(InvoiceSerializer(invoice).data)
+
+
+class TransactionCategoryViewSet(viewsets.ModelViewSet):
+    queryset = TransactionCategory.objects.all()
+    serializer_class = TransactionCategorySerializer
+    permission_classes = [ReadOnlyOrManager]
+    filterset_fields = ["direction", "is_active"]
+    search_fields = ["name", "description"]
+    ordering_fields = ["name", "direction", "created_at"]
+
+
+class TransactionViewSet(viewsets.ModelViewSet):
+    queryset = Transaction.objects.select_related("category", "recorded_by").all()
+    serializer_class = TransactionSerializer
+    permission_classes = [ReadOnlyOrManager]
+    filterset_fields = ["direction", "category", "payment_method"]
+    search_fields = ["title", "counterparty", "reference", "notes"]
+    ordering_fields = ["occurred_on", "amount", "created_at"]
 
 
 class BudgetViewSet(viewsets.ModelViewSet):

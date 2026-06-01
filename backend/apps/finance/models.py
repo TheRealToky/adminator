@@ -131,6 +131,88 @@ class Invoice(BaseModel):
         )
 
 
+class TransactionDirection(models.TextChoices):
+    INCOME = "income", "Income"
+    EXPENSE = "expense", "Expense"
+
+
+class TransactionCategory(BaseModel):
+    """Category for a manual transaction (income or expense bucket)."""
+
+    name = models.CharField(max_length=80)
+    direction = models.CharField(
+        max_length=8, choices=TransactionDirection.choices,
+        default=TransactionDirection.EXPENSE,
+    )
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["direction", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "direction"],
+                name="unique_tx_category_name_direction",
+            ),
+        ]
+        verbose_name_plural = "transaction categories"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.direction})"
+
+
+class Transaction(BaseModel):
+    """Manual income or expense entry."""
+
+    direction = models.CharField(
+        max_length=8, choices=TransactionDirection.choices,
+        default=TransactionDirection.EXPENSE,
+    )
+    category = models.ForeignKey(
+        TransactionCategory, on_delete=models.PROTECT, related_name="transactions"
+    )
+    title = models.CharField(max_length=160)
+    amount = models.DecimalField(
+        max_digits=14, decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    occurred_on = models.DateField(default=timezone.localdate)
+    payment_method = models.CharField(
+        max_length=16,
+        choices=[
+            ("cash", "Cash"),
+            ("mobile_money", "Mobile Money"),
+            ("card", "Card"),
+            ("bank_transfer", "Bank Transfer"),
+        ],
+        default="cash",
+    )
+    counterparty = models.CharField(
+        max_length=160, blank=True,
+        help_text="Free-form: customer for income, supplier for expense.",
+    )
+    reference = models.CharField(max_length=80, blank=True)
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+    )
+
+    class Meta:
+        ordering = ["-occurred_on", "-created_at"]
+        indexes = [
+            models.Index(fields=["-occurred_on"]),
+            models.Index(fields=["direction", "-occurred_on"]),
+            models.Index(fields=["category", "-occurred_on"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.title} — {self.direction} {self.amount}"
+
+
 class Budget(BaseModel):
     """Monthly budget per expense category."""
 
