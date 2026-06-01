@@ -243,6 +243,42 @@ export interface Budget {
   notes: string;
 }
 
+export type AssetCategoryKey =
+  | 'equipment'
+  | 'furniture'
+  | 'vehicle'
+  | 'electronics'
+  | 'fit_out'
+  | 'other';
+
+export type AssetStatus = 'active' | 'disposed';
+
+export interface Asset {
+  id: UUID;
+  name: string;
+  category: AssetCategoryKey;
+  category_display: string;
+  purchase_date: string;
+  purchase_cost: string;
+  useful_life_months: number | null;
+  status: AssetStatus;
+  status_display: string;
+  supplier: UUID | null;
+  supplier_name: string | null;
+  reference: string;
+  notes: string;
+  linked_expense: UUID | null;
+  linked_expense_title: string | null;
+  recorded_by: UUID | null;
+  recorded_by_name: string | null;
+  months_elapsed: number;
+  accumulated_depreciation: string;
+  carrying_value: string;
+  is_fully_depreciated: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Choice {
   value: string;
   label: string;

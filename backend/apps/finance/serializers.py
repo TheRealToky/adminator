@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .models import (
+    Asset,
     Budget,
     Expense,
     ExpenseCategory,
@@ -164,3 +165,88 @@ class BudgetSerializer(serializers.ModelSerializer):
         fields = ("id", "category", "category_name", "month", "amount", "notes",
                   "created_at", "updated_at")
         read_only_fields = ("id", "category_name", "created_at", "updated_at")
+
+
+class AssetSerializer(serializers.ModelSerializer):
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    supplier_name = serializers.CharField(source="supplier.name", read_only=True)
+    recorded_by_name = serializers.CharField(source="recorded_by.full_name", read_only=True)
+
+    # Computed
+    months_elapsed = serializers.IntegerField(read_only=True)
+    accumulated_depreciation = serializers.DecimalField(
+        max_digits=14, decimal_places=2, read_only=True,
+    )
+    carrying_value = serializers.DecimalField(
+        max_digits=14, decimal_places=2, read_only=True,
+    )
+    is_fully_depreciated = serializers.BooleanField(read_only=True)
+
+    # Optional auto-Expense linkage on create (write-only inputs)
+    record_as_expense = serializers.BooleanField(
+        write_only=True, required=False, default=False,
+        help_text="If true, also create a finance.Expense for the purchase.",
+    )
+    expense_category = serializers.PrimaryKeyRelatedField(
+        write_only=True, required=False, allow_null=True,
+        queryset=ExpenseCategory.objects.all(),
+        help_text="ExpenseCategory for the auto-created Expense. Required when record_as_expense is true.",
+    )
+    linked_expense_title = serializers.CharField(
+        source="linked_expense.title", read_only=True,
+    )
+
+    class Meta:
+        model = Asset
+        fields = (
+            "id", "name", "category", "category_display",
+            "purchase_date", "purchase_cost",
+            "useful_life_months", "status", "status_display",
+            "supplier", "supplier_name", "reference", "notes",
+            "linked_expense", "linked_expense_title",
+            "recorded_by", "recorded_by_name",
+            "months_elapsed", "accumulated_depreciation",
+            "carrying_value", "is_fully_depreciated",
+            "record_as_expense", "expense_category",
+            "created_at", "updated_at",
+        )
+        read_only_fields = (
+            "id", "category_display", "status_display",
+            "supplier_name", "recorded_by", "recorded_by_name",
+            "linked_expense", "linked_expense_title",
+            "months_elapsed", "accumulated_depreciation",
+            "carrying_value", "is_fully_depreciated",
+            "created_at", "updated_at",
+        )
+
+    def validate(self, attrs):
+        if attrs.get("record_as_expense") and not attrs.get("expense_category"):
+            raise serializers.ValidationError(
+                {"expense_category": "Required when recording as an expense."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        record_as_expense = validated_data.pop("record_as_expense", False)
+        expense_category = validated_data.pop("expense_category", None)
+
+        if request and request.user.is_authenticated:
+            validated_data["recorded_by"] = request.user
+
+        if record_as_expense and expense_category:
+            user = request.user if request and request.user.is_authenticated else None
+            expense = Expense.objects.create(
+                category=expense_category,
+                title=validated_data["name"],
+                amount=validated_data["purchase_cost"],
+                incurred_on=validated_data.get("purchase_date") or timezone.localdate(),
+                supplier=validated_data.get("supplier"),
+                reference=validated_data.get("reference", ""),
+                notes=f"Asset purchase: {validated_data['name']}",
+                recorded_by=user,
+            )
+            validated_data["linked_expense"] = expense
+
+        return super().create(validated_data)

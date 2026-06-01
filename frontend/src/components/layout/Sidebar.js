@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Package, Boxes, Factory, Receipt, FileText, Wallet, Users2, Building2, Tag, ChefHat, ArrowLeftRight, X, } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Boxes, Factory, Receipt, FileText, Users2, Building2, Tag, ChefHat, ArrowLeftRight, X, } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/store/AuthContext';
@@ -21,7 +21,6 @@ export function Sidebar({ open, onClose }) {
         { to: '/suppliers', label: t('sidebar.suppliers'), icon: Building2 },
         { section: t('sidebar.sections.finance') },
         { to: '/transactions', label: t('sidebar.transactions'), icon: ArrowLeftRight },
-        { to: '/expenses', label: t('sidebar.expenses'), icon: Wallet },
         { to: '/invoices', label: t('sidebar.invoices'), icon: FileText },
         { to: '/budgets', label: t('sidebar.budgets'), icon: Receipt },
         { section: t('sidebar.sections.admin'), adminOnly: true },

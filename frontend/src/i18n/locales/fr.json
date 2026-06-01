@@ -71,9 +71,9 @@
     "rawMaterials": "Matières premières",
     "suppliers": "Fournisseurs",
     "transactions": "Transactions",
-    "expenses": "Dépenses",
     "invoices": "Factures",
     "budgets": "Budgets",
+    "assets": "Immobilisations",
     "staff": "Personnel"
   },
   "topbar": {
@@ -497,84 +497,6 @@
       "notes": "Notes"
     }
   },
-  "expenses": {
-    "title": "Dépenses",
-    "subtitle": "Coûts d'exploitation par catégorie",
-    "tabs": {
-      "expenses": "dépenses",
-      "categories": "catégories"
-    },
-    "list": {
-      "new": "Enregistrer une dépense",
-      "searchPlaceholder": "Rechercher des dépenses…",
-      "emptyTitle": "Aucune dépense enregistrée",
-      "emptyDescription": "Suivez les coûts d'exploitation en temps réel.",
-      "deleteTitle": "Supprimer la dépense ?",
-      "deleteMessage": "Supprimer « {{title}} » ?",
-      "created": "Dépense enregistrée.",
-      "updated": "Dépense mise à jour.",
-      "categoryCreated": "Catégorie créée.",
-      "newModal": "Enregistrer une dépense",
-      "editModal": "Modifier la dépense"
-    },
-    "categories": {
-      "new": "Nouvelle catégorie",
-      "newModal": "Nouvelle catégorie",
-      "editModal": "Modifier la catégorie",
-      "searchPlaceholder": "Rechercher des catégories…",
-      "emptyTitle": "Aucune catégorie",
-      "deleteTitle": "Supprimer la catégorie ?",
-      "deleteMessage": "Supprimer « {{name}} » ?",
-      "created": "Catégorie créée.",
-      "updated": "Catégorie mise à jour."
-    },
-    "columns": {
-      "date": "Date",
-      "title": "Intitulé",
-      "category": "Catégorie",
-      "amount": "Montant",
-      "payment": "Paiement",
-      "supplier": "Fournisseur",
-      "name": "Nom",
-      "description": "Description",
-      "status": "Statut"
-    },
-    "fields": {
-      "title": "Intitulé",
-      "category": "Catégorie",
-      "new": "Nouveau",
-      "categoryNamePlaceholder": "Nom de la catégorie",
-      "noneYet": "— Aucune encore — cliquez + Nouveau —",
-      "amount": "Montant",
-      "date": "Date",
-      "paymentMethod": "Mode de paiement",
-      "paymentMethods": {
-        "cash": "Espèces",
-        "mobile_money": "Mobile Money",
-        "card": "Carte",
-        "bank_transfer": "Virement bancaire"
-      },
-      "supplierOptional": "Fournisseur (optionnel)",
-      "reference": "Référence / n° de reçu",
-      "notes": "Notes",
-      "name": "Nom",
-      "description": "Description"
-    },
-    "exportCols": {
-      "date": "Date",
-      "title": "Intitulé",
-      "category": "Catégorie",
-      "amount": "Montant",
-      "payment": "Paiement",
-      "supplier": "Fournisseur",
-      "reference": "Référence",
-      "recordedBy": "Enregistré par",
-      "notes": "Notes",
-      "name": "Nom",
-      "description": "Description",
-      "active": "Actif"
-    }
-  },
   "transactions": {
     "title": "Transactions",
     "subtitle": "Entrées manuelles de revenus et de dépenses",
@@ -770,6 +692,77 @@
       "category": "Catégorie",
       "month": "Mois",
       "budgeted": "Budgété",
+      "notes": "Notes"
+    }
+  },
+  "assets": {
+    "title": "Immobilisations",
+    "subtitle": "Équipement, mobilier, véhicules et autres actifs — amortissement linéaire.",
+    "new": "Nouvelle immobilisation",
+    "newModal": "Nouvelle immobilisation",
+    "editModal": "Modifier l'immobilisation",
+    "searchPlaceholder": "Rechercher des immobilisations…",
+    "emptyTitle": "Aucune immobilisation enregistrée",
+    "emptyDescription": "Ajoutez fours, frigos, agencements ou véhicules pour suivre leur valeur comptable.",
+    "created": "Immobilisation créée.",
+    "updated": "Immobilisation mise à jour.",
+    "disposed": "Immobilisation marquée comme cédée.",
+    "reactivated": "Immobilisation réactivée.",
+    "deleteTitle": "Supprimer l'immobilisation ?",
+    "deleteMessage": "Supprimer définitivement « {{name}} » du registre ?",
+    "monthsValue_one": "{{count}} mois",
+    "monthsValue_other": "{{count}} mois",
+    "categories": {
+      "equipment": "Équipement",
+      "furniture": "Mobilier",
+      "vehicle": "Véhicule",
+      "electronics": "Électronique",
+      "fit_out": "Agencement",
+      "other": "Autre"
+    },
+    "statuses": {
+      "active": "Actif",
+      "disposed": "Cédé"
+    },
+    "columns": {
+      "name": "Nom",
+      "category": "Catégorie",
+      "purchased": "Acheté le",
+      "cost": "Coût",
+      "usefulLife": "Durée de vie",
+      "carryingValue": "Valeur comptable",
+      "status": "Statut"
+    },
+    "actions": {
+      "dispose": "Marquer comme cédé",
+      "reactivate": "Réactiver"
+    },
+    "fields": {
+      "name": "Nom",
+      "namePlaceholder": "ex. Four Rofco, Vitrine réfrigérée…",
+      "category": "Catégorie",
+      "purchaseDate": "Date d'achat",
+      "purchaseCost": "Coût d'achat",
+      "usefulLifeMonths": "Durée de vie (mois)",
+      "usefulLifePlaceholder": "ex. 60 pour 5 ans",
+      "supplier": "Fournisseur",
+      "reference": "Référence / N° facture",
+      "referencePlaceholder": "FAC-2024-0123",
+      "recordAsExpense": "Également enregistrer comme dépense",
+      "recordAsExpenseHint": "Crée une dépense liée pour que la sortie de trésorerie apparaisse dans le compte de résultat du mois d'achat.",
+      "expenseCategory": "Catégorie de dépense"
+    },
+    "exportCols": {
+      "name": "Nom",
+      "category": "Catégorie",
+      "purchased": "Acheté le",
+      "cost": "Coût",
+      "usefulLifeMonths": "Durée de vie (mois)",
+      "accumulatedDepreciation": "Amortissement cumulé",
+      "carryingValue": "Valeur comptable",
+      "supplier": "Fournisseur",
+      "reference": "Référence",
+      "status": "Statut",
       "notes": "Notes"
     }
   },

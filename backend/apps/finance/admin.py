@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    Asset,
     Budget,
     Expense,
     ExpenseCategory,
@@ -53,3 +54,15 @@ class TransactionAdmin(admin.ModelAdmin):
     list_filter = ("direction", "category", "payment_method", "occurred_on")
     search_fields = ("title", "counterparty", "reference", "notes")
     autocomplete_fields = ("category", "recorded_by")
+
+
+@admin.register(Asset)
+class AssetAdmin(admin.ModelAdmin):
+    list_display = (
+        "name", "category", "purchase_date", "purchase_cost",
+        "useful_life_months", "status", "supplier",
+    )
+    list_filter = ("category", "status", "purchase_date")
+    search_fields = ("name", "reference", "notes")
+    autocomplete_fields = ("supplier", "recorded_by", "linked_expense")
+    readonly_fields = ("months_elapsed", "accumulated_depreciation", "carrying_value")

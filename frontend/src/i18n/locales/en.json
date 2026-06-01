@@ -71,9 +71,9 @@
     "rawMaterials": "Raw materials",
     "suppliers": "Suppliers",
     "transactions": "Transactions",
-    "expenses": "Expenses",
     "invoices": "Invoices",
     "budgets": "Budgets",
+    "assets": "Assets",
     "staff": "Staff"
   },
   "topbar": {
@@ -497,84 +497,6 @@
       "notes": "Notes"
     }
   },
-  "expenses": {
-    "title": "Expenses",
-    "subtitle": "Operating costs by category",
-    "tabs": {
-      "expenses": "expenses",
-      "categories": "categories"
-    },
-    "list": {
-      "new": "Record expense",
-      "searchPlaceholder": "Search expenses…",
-      "emptyTitle": "No expenses recorded",
-      "emptyDescription": "Track operating costs as they happen.",
-      "deleteTitle": "Delete expense?",
-      "deleteMessage": "Remove \"{{title}}\"?",
-      "created": "Expense recorded.",
-      "updated": "Expense updated.",
-      "categoryCreated": "Category created.",
-      "newModal": "Record expense",
-      "editModal": "Edit expense"
-    },
-    "categories": {
-      "new": "New category",
-      "newModal": "New category",
-      "editModal": "Edit category",
-      "searchPlaceholder": "Search categories…",
-      "emptyTitle": "No categories yet",
-      "deleteTitle": "Delete category?",
-      "deleteMessage": "Remove \"{{name}}\"?",
-      "created": "Category created.",
-      "updated": "Category updated."
-    },
-    "columns": {
-      "date": "Date",
-      "title": "Title",
-      "category": "Category",
-      "amount": "Amount",
-      "payment": "Payment",
-      "supplier": "Supplier",
-      "name": "Name",
-      "description": "Description",
-      "status": "Status"
-    },
-    "fields": {
-      "title": "Title",
-      "category": "Category",
-      "new": "New",
-      "categoryNamePlaceholder": "Category name",
-      "noneYet": "— None yet — click + New —",
-      "amount": "Amount",
-      "date": "Date",
-      "paymentMethod": "Payment method",
-      "paymentMethods": {
-        "cash": "Cash",
-        "mobile_money": "Mobile Money",
-        "card": "Card",
-        "bank_transfer": "Bank Transfer"
-      },
-      "supplierOptional": "Supplier (optional)",
-      "reference": "Reference / receipt #",
-      "notes": "Notes",
-      "name": "Name",
-      "description": "Description"
-    },
-    "exportCols": {
-      "date": "Date",
-      "title": "Title",
-      "category": "Category",
-      "amount": "Amount",
-      "payment": "Payment",
-      "supplier": "Supplier",
-      "reference": "Reference",
-      "recordedBy": "Recorded by",
-      "notes": "Notes",
-      "name": "Name",
-      "description": "Description",
-      "active": "Active"
-    }
-  },
   "transactions": {
     "title": "Transactions",
     "subtitle": "Manual income and expense entries",
@@ -770,6 +692,77 @@
       "category": "Category",
       "month": "Month",
       "budgeted": "Budgeted",
+      "notes": "Notes"
+    }
+  },
+  "assets": {
+    "title": "Assets",
+    "subtitle": "Equipment, furniture, vehicles and other capital assets — depreciated straight-line.",
+    "new": "New asset",
+    "newModal": "New asset",
+    "editModal": "Edit asset",
+    "searchPlaceholder": "Search assets…",
+    "emptyTitle": "No assets recorded",
+    "emptyDescription": "Add ovens, fridges, fittings or vehicles to track their carrying value.",
+    "created": "Asset created.",
+    "updated": "Asset updated.",
+    "disposed": "Asset marked as disposed.",
+    "reactivated": "Asset reactivated.",
+    "deleteTitle": "Delete asset?",
+    "deleteMessage": "Permanently remove \"{{name}}\" from the register?",
+    "monthsValue_one": "{{count}} month",
+    "monthsValue_other": "{{count}} months",
+    "categories": {
+      "equipment": "Equipment",
+      "furniture": "Furniture",
+      "vehicle": "Vehicle",
+      "electronics": "Electronics",
+      "fit_out": "Shop fit-out",
+      "other": "Other"
+    },
+    "statuses": {
+      "active": "Active",
+      "disposed": "Disposed"
+    },
+    "columns": {
+      "name": "Name",
+      "category": "Category",
+      "purchased": "Purchased",
+      "cost": "Cost",
+      "usefulLife": "Useful life",
+      "carryingValue": "Carrying value",
+      "status": "Status"
+    },
+    "actions": {
+      "dispose": "Mark as disposed",
+      "reactivate": "Reactivate"
+    },
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Rofco oven, Display fridge…",
+      "category": "Category",
+      "purchaseDate": "Purchase date",
+      "purchaseCost": "Purchase cost",
+      "usefulLifeMonths": "Useful life (months)",
+      "usefulLifePlaceholder": "e.g. 60 for 5 years",
+      "supplier": "Supplier",
+      "reference": "Reference / invoice #",
+      "referencePlaceholder": "INV-2024-0123",
+      "recordAsExpense": "Also record as an expense",
+      "recordAsExpenseHint": "Creates a linked finance Expense so the cash-out shows in P&L for the purchase month.",
+      "expenseCategory": "Expense category"
+    },
+    "exportCols": {
+      "name": "Name",
+      "category": "Category",
+      "purchased": "Purchased",
+      "cost": "Cost",
+      "usefulLifeMonths": "Useful life (months)",
+      "accumulatedDepreciation": "Accumulated depreciation",
+      "carryingValue": "Carrying value",
+      "supplier": "Supplier",
+      "reference": "Reference",
+      "status": "Status",
       "notes": "Notes"
     }
   },

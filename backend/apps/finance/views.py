@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from apps.core.permissions import ReadOnlyOrManager
 
 from .models import (
+    Asset,
     Budget,
     Expense,
     ExpenseCategory,
@@ -19,6 +20,7 @@ from .models import (
     TransactionCategory,
 )
 from .serializers import (
+    AssetSerializer,
     BudgetSerializer,
     ExpenseCategorySerializer,
     ExpenseSerializer,
@@ -114,3 +116,28 @@ class BudgetViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyOrManager]
     filterset_fields = ["category", "month"]
     ordering_fields = ["month", "amount"]
+
+
+class AssetViewSet(viewsets.ModelViewSet):
+    queryset = Asset.objects.select_related(
+        "supplier", "recorded_by", "linked_expense"
+    ).all()
+    serializer_class = AssetSerializer
+    permission_classes = [ReadOnlyOrManager]
+    filterset_fields = ["category", "status", "supplier"]
+    search_fields = ["name", "reference", "notes"]
+    ordering_fields = ["purchase_date", "purchase_cost", "created_at"]
+
+    @action(detail=True, methods=["post"], url_path="dispose")
+    def dispose(self, request, pk=None):
+        asset = self.get_object()
+        asset.status = "disposed"
+        asset.save(update_fields=["status", "updated_at"])
+        return Response(AssetSerializer(asset).data)
+
+    @action(detail=True, methods=["post"], url_path="reactivate")
+    def reactivate(self, request, pk=None):
+        asset = self.get_object()
+        asset.status = "active"
+        asset.save(update_fields=["status", "updated_at"])
+        return Response(AssetSerializer(asset).data)

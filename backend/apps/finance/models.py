@@ -236,3 +236,119 @@ class Budget(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.category.name} · {self.month:%Y-%m}: {self.amount}"
+
+
+class AssetCategory(models.TextChoices):
+    EQUIPMENT = "equipment", "Equipment"
+    FURNITURE = "furniture", "Furniture"
+    VEHICLE = "vehicle", "Vehicle"
+    ELECTRONICS = "electronics", "Electronics"
+    FIT_OUT = "fit_out", "Shop fit-out"
+    OTHER = "other", "Other"
+
+
+class AssetStatus(models.TextChoices):
+    ACTIVE = "active", "Active"
+    DISPOSED = "disposed", "Disposed"
+
+
+class Asset(BaseModel):
+    """A capital asset other than ingredients or finished-product stock.
+
+    Tracks ovens, mixers, fridges, vehicles, fittings, etc. Straight-line
+    depreciation is computed on the fly from `useful_life_months` so the
+    register stays simple — no GL, no journals, just a carrying value.
+    """
+
+    name = models.CharField(max_length=160)
+    category = models.CharField(
+        max_length=20,
+        choices=AssetCategory.choices,
+        default=AssetCategory.EQUIPMENT,
+    )
+    purchase_date = models.DateField(default=timezone.localdate)
+    purchase_cost = models.DecimalField(
+        max_digits=14, decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    useful_life_months = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Months over which to straight-line depreciate. Leave blank for no depreciation.",
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=AssetStatus.choices,
+        default=AssetStatus.ACTIVE,
+    )
+    supplier = models.ForeignKey(
+        "catalog.Supplier",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assets",
+    )
+    reference = models.CharField(
+        max_length=80, blank=True,
+        help_text="Invoice / receipt number.",
+    )
+    notes = models.TextField(blank=True)
+    linked_expense = models.OneToOneField(
+        Expense,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="asset",
+        help_text="Optional Expense row created at purchase time so cash-out shows in P&L.",
+    )
+    recorded_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assets",
+    )
+
+    class Meta:
+        ordering = ["-purchase_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["-purchase_date"]),
+            models.Index(fields=["category", "-purchase_date"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.get_category_display()})"
+
+    # ── Straight-line depreciation, computed on the fly ─────────────────
+    @property
+    def months_elapsed(self) -> int:
+        """Whole months between purchase date and today."""
+        today = timezone.localdate()
+        months = (today.year - self.purchase_date.year) * 12 + (
+            today.month - self.purchase_date.month
+        )
+        if today.day < self.purchase_date.day:
+            months -= 1
+        return max(0, months)
+
+    @property
+    def accumulated_depreciation(self) -> Decimal:
+        if self.status == AssetStatus.DISPOSED:
+            return self.purchase_cost
+        if not self.useful_life_months:
+            return Decimal("0")
+        elapsed = min(self.months_elapsed, self.useful_life_months)
+        per_month = self.purchase_cost / Decimal(self.useful_life_months)
+        return (per_month * Decimal(elapsed)).quantize(Decimal("0.01"))
+
+    @property
+    def carrying_value(self) -> Decimal:
+        if self.status == AssetStatus.DISPOSED:
+            return Decimal("0")
+        return max(Decimal("0"), self.purchase_cost - self.accumulated_depreciation)
+
+    @property
+    def is_fully_depreciated(self) -> bool:
+        if not self.useful_life_months:
+            return False
+        return self.months_elapsed >= self.useful_life_months

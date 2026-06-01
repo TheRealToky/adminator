@@ -1,6 +1,6 @@
 import { api } from './client';
 import type {
-  Budget, Choice, DashboardOverview, Expense, ExpenseCategory, Invoice, LoginResponse,
+  Asset, Budget, Choice, DashboardOverview, Expense, ExpenseCategory, Invoice, LoginResponse,
   Paginated, Product, ProductCategory, ProductionRun, RawMaterial, RecipeItem,
   Sale, StockItem, StockMovement, Supplier, Transaction, TransactionCategory, User,
 } from './types';
@@ -202,6 +202,21 @@ export const finance = {
     update: (id: string, data: Partial<Transaction>) =>
       api.patch<Transaction>(`/finance/transactions/${id}/`, data).then((r) => r.data),
     remove: (id: string) => api.delete(`/finance/transactions/${id}/`),
+  },
+  assets: {
+    list: (params = {}) =>
+      api.get<Paginated<Asset>>('/finance/assets/', { params }).then((r) => r.data),
+    get: (id: string) => api.get<Asset>(`/finance/assets/${id}/`).then((r) => r.data),
+    create: (
+      data: Partial<Asset> & { record_as_expense?: boolean; expense_category?: string | null },
+    ) => api.post<Asset>('/finance/assets/', data).then((r) => r.data),
+    update: (id: string, data: Partial<Asset>) =>
+      api.patch<Asset>(`/finance/assets/${id}/`, data).then((r) => r.data),
+    remove: (id: string) => api.delete(`/finance/assets/${id}/`),
+    dispose: (id: string) =>
+      api.post<Asset>(`/finance/assets/${id}/dispose/`).then((r) => r.data),
+    reactivate: (id: string) =>
+      api.post<Asset>(`/finance/assets/${id}/reactivate/`).then((r) => r.data),
   },
 };
 
