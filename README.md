@@ -270,4 +270,4 @@ This repo runs in dev mode out of the box. Before shipping:
 
 ## License
 
-MIT — do whatever you like with it.
+TBD
