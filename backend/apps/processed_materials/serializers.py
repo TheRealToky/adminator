@@ -231,6 +231,9 @@ class ProcessedMaterialStockSerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(read_only=True)
     item_sku = serializers.CharField(read_only=True)
     item_unit = serializers.CharField(read_only=True)
+    item_unit_cost = serializers.DecimalField(
+        max_digits=14, decimal_places=4, read_only=True
+    )
     reorder_threshold = serializers.DecimalField(
         max_digits=14, decimal_places=4, read_only=True
     )
@@ -240,6 +243,7 @@ class ProcessedMaterialStockSerializer(serializers.ModelSerializer):
         model = ProcessedMaterialStock
         fields = (
             "id", "processed_material", "item_name", "item_sku", "item_unit",
+            "item_unit_cost",
             "quantity", "reorder_threshold", "is_low",
             "created_at", "updated_at",
         )
@@ -275,6 +279,33 @@ class ProcessedMaterialStockAdjustSerializer(serializers.Serializer):
             reason=reason,
             reference=self.validated_data.get("reference", ""),
             note=self.validated_data.get("note", ""),
+            user=user,
+        )
+
+
+class ProcessedMaterialStockWriteOffSerializer(serializers.Serializer):
+    """Write off processed-material stock as waste/loss.
+
+    Decrements stock and books an Expense at ``unit_cost × quantity`` under the
+    shared "Inventory write-off" category.
+    """
+
+    processed_material = serializers.PrimaryKeyRelatedField(
+        queryset=ProcessedMaterial.objects.all()
+    )
+    quantity = serializers.DecimalField(
+        max_digits=14, decimal_places=4, min_value=Decimal("0.0001")
+    )
+    note = serializers.CharField(required=False, allow_blank=True)
+    reference = serializers.CharField(required=False, allow_blank=True)
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        return services.record_waste(
+            processed_material=self.validated_data["processed_material"],
+            quantity=self.validated_data["quantity"],
+            note=self.validated_data.get("note", ""),
+            reference=self.validated_data.get("reference", ""),
             user=user,
         )
 

@@ -128,6 +128,15 @@ export const finance = {
         update: (id, data) => api.patch(`/finance/transactions/${id}/`, data).then((r) => r.data),
         remove: (id) => api.delete(`/finance/transactions/${id}/`),
     },
+    assets: {
+        list: (params = {}) => api.get('/finance/assets/', { params }).then((r) => r.data),
+        get: (id) => api.get(`/finance/assets/${id}/`).then((r) => r.data),
+        create: (data) => api.post('/finance/assets/', data).then((r) => r.data),
+        update: (id, data) => api.patch(`/finance/assets/${id}/`, data).then((r) => r.data),
+        remove: (id) => api.delete(`/finance/assets/${id}/`),
+        dispose: (id) => api.post(`/finance/assets/${id}/dispose/`).then((r) => r.data),
+        reactivate: (id) => api.post(`/finance/assets/${id}/reactivate/`).then((r) => r.data),
+    },
 };
 // ── Analytics ─────────────────────────────────────────────────────────────
 export const analytics = {

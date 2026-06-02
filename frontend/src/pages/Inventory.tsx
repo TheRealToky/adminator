@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Boxes, AlertTriangle, History, Sliders, ChefHat } from 'lucide-react';
+import { Boxes, AlertTriangle, History, Sliders, ChefHat, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { inventory } from '@/api/endpoints';
 import { processedMaterials } from '@/api/processed-materials';
@@ -16,7 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { useCrudList } from '@/hooks/useCrudList';
-import { formatNumber, formatDateTime } from '@/lib/format';
+import { formatNumber, formatMoney, formatDateTime } from '@/lib/format';
 import type { StockItem, StockMovement } from '@/api/types';
 import type { ProcessedMaterialStock } from '@/api/processed-materials';
 
@@ -26,6 +26,8 @@ export function InventoryPage() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('all');
   const [adjustOpen, setAdjustOpen] = useState<StockItem | null>(null);
+  const [writeOffOpen, setWriteOffOpen] = useState<StockItem | null>(null);
+  const [pmWriteOffOpen, setPmWriteOffOpen] = useState<ProcessedMaterialStock | null>(null);
 
   const tabs: { key: Tab; label: string; icon: typeof Boxes }[] = [
     { key: 'all', label: t('inventory.tabs.all'), icon: Boxes },
@@ -55,19 +57,27 @@ export function InventoryPage() {
           </div>
         </div>
 
-        {tab === 'all' && <AllStockTab onAdjust={setAdjustOpen} />}
-        {tab === 'low' && <LowStockTab onAdjust={setAdjustOpen} />}
-        {tab === 'processed' && <ProcessedStockTab />}
+        {tab === 'all' && <AllStockTab onAdjust={setAdjustOpen} onWriteOff={setWriteOffOpen} />}
+        {tab === 'low' && <LowStockTab onAdjust={setAdjustOpen} onWriteOff={setWriteOffOpen} />}
+        {tab === 'processed' && <ProcessedStockTab onWriteOff={setPmWriteOffOpen} />}
         {tab === 'movements' && <MovementsTab />}
       </div>
 
       <AdjustModal stock={adjustOpen} onClose={() => setAdjustOpen(null)} />
+      <WriteOffModal stock={writeOffOpen} onClose={() => setWriteOffOpen(null)} />
+      <ProcessedWriteOffModal
+        stock={pmWriteOffOpen}
+        onClose={() => setPmWriteOffOpen(null)}
+      />
     </>
   );
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
-function useStockColumns(onAdjust: (s: StockItem) => void): Column<StockItem>[] {
+function useStockColumns(
+  onAdjust: (s: StockItem) => void,
+  onWriteOff: (s: StockItem) => void,
+): Column<StockItem>[] {
   const { t } = useTranslation();
   return [
     { key: 'name', header: t('inventory.columns.item'), render: (r) => (
@@ -93,9 +103,22 @@ function useStockColumns(onAdjust: (s: StockItem) => void): Column<StockItem>[] 
         : <span className="badge-green">{t('inventory.badges.ok')}</span>
     },
     { key: 'actions', header: '', align: 'right', render: (r) => (
-      <button className="btn-secondary px-2 py-1 text-xs" onClick={() => onAdjust(r)}>
-        <Sliders size={12} /> {t('inventory.actions.adjust')}
-      </button>
+      <div className="flex justify-end gap-1">
+        <button
+          className="btn-secondary px-2 py-1 text-xs"
+          onClick={() => onAdjust(r)}
+        >
+          <Sliders size={12} /> {t('inventory.actions.adjust')}
+        </button>
+        <button
+          className="btn-ghost px-2 py-1 text-xs text-red-600"
+          title={t('inventory.actions.writeOff')}
+          disabled={Number(r.quantity) <= 0}
+          onClick={() => onWriteOff(r)}
+        >
+          <Trash2 size={12} /> {t('inventory.actions.writeOff')}
+        </button>
+      </div>
     )},
   ];
 }
@@ -113,13 +136,19 @@ function useStockExportColumns(): ExportColumn<StockItem>[] {
   ];
 }
 
-function AllStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
+function AllStockTab({
+  onAdjust,
+  onWriteOff,
+}: {
+  onAdjust: (s: StockItem) => void;
+  onWriteOff: (s: StockItem) => void;
+}) {
   const { t } = useTranslation();
   const list = useCrudList<StockItem>({
     queryKey: ['stock'],
     fetcher: (p) => inventory.stock.list(p),
   });
-  const columns = useStockColumns(onAdjust);
+  const columns = useStockColumns(onAdjust, onWriteOff);
   const exportColumns = useStockExportColumns();
   return (
     <>
@@ -146,13 +175,19 @@ function AllStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
   );
 }
 
-function LowStockTab({ onAdjust }: { onAdjust: (s: StockItem) => void }) {
+function LowStockTab({
+  onAdjust,
+  onWriteOff,
+}: {
+  onAdjust: (s: StockItem) => void;
+  onWriteOff: (s: StockItem) => void;
+}) {
   const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['stock-low'],
     queryFn: () => inventory.stock.low(),
   });
-  const columns = useStockColumns(onAdjust);
+  const columns = useStockColumns(onAdjust, onWriteOff);
   const exportColumns = useStockExportColumns();
   return (
     <>
@@ -296,8 +331,277 @@ function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () 
   );
 }
 
+// ── Write-off modal (products / raw materials) ───────────────────────────
+function WriteOffModal({ stock, onClose }: { stock: StockItem | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { t } = useTranslation();
+  const [quantity, setQuantity] = useState('');
+  const [note, setNote] = useState('');
+  const [reference, setReference] = useState('');
+
+  const mutate = useMutation({
+    mutationFn: () => inventory.stock.writeOff({
+      product: stock?.kind === 'product' ? stock.product! : undefined,
+      raw_material: stock?.kind === 'raw_material' ? stock.raw_material! : undefined,
+      quantity: Number(quantity),
+      note,
+      reference,
+    }),
+    onSuccess: () => {
+      const qty = Number(quantity);
+      const expense = qty * Number(stock?.item_unit_cost ?? 0);
+      toast.success(
+        expense > 0
+          ? t('inventory.writeOff.recorded', {
+              qty: formatNumber(qty, 2),
+              unit: stock?.item_unit ?? '',
+              name: stock?.item_name ?? '',
+            })
+          : t('inventory.writeOff.recordedNoCost', {
+              qty: formatNumber(qty, 2),
+              unit: stock?.item_unit ?? '',
+              name: stock?.item_name ?? '',
+            }),
+      );
+      qc.invalidateQueries({ queryKey: ['stock'] });
+      qc.invalidateQueries({ queryKey: ['stock-low'] });
+      qc.invalidateQueries({ queryKey: ['movements'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      onClose();
+      setQuantity(''); setNote(''); setReference('');
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  if (!stock) return null;
+  const onHand = Number(stock.quantity);
+  const unitCost = Number(stock.item_unit_cost || 0);
+  const qty = Number(quantity) || 0;
+  const exceedsStock = qty > onHand;
+  const expense = qty * unitCost;
+
+  return (
+    <Modal
+      open={!!stock}
+      onClose={onClose}
+      title={t('inventory.writeOff.title', { name: stock.item_name })}
+      size="sm"
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
+          <button
+            className="btn-primary"
+            disabled={!quantity || qty <= 0 || exceedsStock || mutate.isPending}
+            onClick={() => mutate.mutate()}
+          >
+            {mutate.isPending ? t('inventory.writeOff.submitting') : t('inventory.writeOff.submit')}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-500 mb-3">
+        {unitCost > 0 ? (
+          <Trans
+            i18nKey="inventory.writeOff.lead"
+            values={{ cost: formatMoney(unitCost), unit: stock.item_unit }}
+            components={{ 1: <strong /> }}
+          />
+        ) : (
+          t('inventory.writeOff.leadZeroCost')
+        )}
+      </p>
+      <p
+        className="text-sm text-slate-500 mb-3"
+        dangerouslySetInnerHTML={{
+          __html: t('inventory.writeOff.currentOnHand', {
+            qty: formatNumber(onHand, 2),
+            unit: stock.item_unit,
+          }),
+        }}
+      />
+      <div className="space-y-3">
+        <div>
+          <label className="label">
+            {t('inventory.writeOff.quantity', { unit: stock.item_unit })}
+          </label>
+          <input
+            autoFocus type="number" step="0.01" min="0" max={onHand}
+            className="input"
+            value={quantity} onChange={(e) => setQuantity(e.target.value)}
+          />
+          {exceedsStock && (
+            <p className="text-xs text-red-600 mt-1">
+              {t('inventory.writeOff.exceedsOnHand', {
+                qty: formatNumber(onHand, 2),
+                unit: stock.item_unit,
+              })}
+            </p>
+          )}
+        </div>
+        <div className="rounded-md bg-slate-50 border border-slate-200 px-3 py-2 flex items-center justify-between">
+          <span className="text-xs text-slate-600">{t('inventory.writeOff.expenseToBook')}</span>
+          <span className="text-sm font-semibold tabular-nums">
+            {formatMoney(expense)}
+          </span>
+        </div>
+        <div>
+          <label className="label">{t('inventory.writeOff.reason')}</label>
+          <textarea
+            className="input" rows={2}
+            placeholder={t('inventory.writeOff.reasonPlaceholder')}
+            value={note} onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">{t('inventory.writeOff.reference')}</label>
+          <input className="input" value={reference} onChange={(e) => setReference(e.target.value)} />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Write-off modal (processed materials) ────────────────────────────────
+function ProcessedWriteOffModal({
+  stock, onClose,
+}: { stock: ProcessedMaterialStock | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { t } = useTranslation();
+  const [quantity, setQuantity] = useState('');
+  const [note, setNote] = useState('');
+  const [reference, setReference] = useState('');
+
+  const mutate = useMutation({
+    mutationFn: () => processedMaterials.stock.writeOff({
+      processed_material: stock!.processed_material,
+      quantity: Number(quantity),
+      note,
+      reference,
+    }),
+    onSuccess: () => {
+      const qty = Number(quantity);
+      const expense = qty * Number(stock?.item_unit_cost ?? 0);
+      toast.success(
+        expense > 0
+          ? t('processedMaterials.writeOff.recorded', {
+              qty: formatNumber(qty, 2),
+              unit: stock?.item_unit ?? '',
+              name: stock?.item_name ?? '',
+            })
+          : t('processedMaterials.writeOff.recordedNoCost', {
+              qty: formatNumber(qty, 2),
+              unit: stock?.item_unit ?? '',
+              name: stock?.item_name ?? '',
+            }),
+      );
+      qc.invalidateQueries({ queryKey: ['processed-stock'] });
+      qc.invalidateQueries({ queryKey: ['processed-materials'] });
+      qc.invalidateQueries({ queryKey: ['processed-movements'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      onClose();
+      setQuantity(''); setNote(''); setReference('');
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  if (!stock) return null;
+  const onHand = Number(stock.quantity);
+  const unitCost = Number(stock.item_unit_cost || 0);
+  const qty = Number(quantity) || 0;
+  const exceedsStock = qty > onHand;
+  const expense = qty * unitCost;
+
+  return (
+    <Modal
+      open={!!stock}
+      onClose={onClose}
+      title={t('processedMaterials.writeOff.title', { name: stock.item_name })}
+      size="sm"
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
+          <button
+            className="btn-primary"
+            disabled={!quantity || qty <= 0 || exceedsStock || mutate.isPending}
+            onClick={() => mutate.mutate()}
+          >
+            {mutate.isPending
+              ? t('processedMaterials.writeOff.submitting')
+              : t('processedMaterials.writeOff.submit')}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-500 mb-3">
+        {unitCost > 0 ? (
+          <Trans
+            i18nKey="processedMaterials.writeOff.lead"
+            values={{ cost: formatMoney(unitCost), unit: stock.item_unit }}
+            components={{ 1: <strong /> }}
+          />
+        ) : (
+          t('processedMaterials.writeOff.leadZeroCost')
+        )}
+      </p>
+      <p
+        className="text-sm text-slate-500 mb-3"
+        dangerouslySetInnerHTML={{
+          __html: t('processedMaterials.writeOff.currentOnHand', {
+            qty: formatNumber(onHand, 2),
+            unit: stock.item_unit,
+          }),
+        }}
+      />
+      <div className="space-y-3">
+        <div>
+          <label className="label">
+            {t('processedMaterials.writeOff.quantity', { unit: stock.item_unit })}
+          </label>
+          <input
+            autoFocus type="number" step="0.01" min="0" max={onHand}
+            className="input"
+            value={quantity} onChange={(e) => setQuantity(e.target.value)}
+          />
+          {exceedsStock && (
+            <p className="text-xs text-red-600 mt-1">
+              {t('processedMaterials.writeOff.exceedsOnHand', {
+                qty: formatNumber(onHand, 2),
+                unit: stock.item_unit,
+              })}
+            </p>
+          )}
+        </div>
+        <div className="rounded-md bg-slate-50 border border-slate-200 px-3 py-2 flex items-center justify-between">
+          <span className="text-xs text-slate-600">{t('processedMaterials.writeOff.expenseToBook')}</span>
+          <span className="text-sm font-semibold tabular-nums">
+            {formatMoney(expense)}
+          </span>
+        </div>
+        <div>
+          <label className="label">{t('processedMaterials.writeOff.reason')}</label>
+          <textarea
+            className="input" rows={2}
+            placeholder={t('processedMaterials.writeOff.reasonPlaceholder')}
+            value={note} onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">{t('processedMaterials.writeOff.reference')}</label>
+          <input className="input" value={reference} onChange={(e) => setReference(e.target.value)} />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 // ── Processed materials stock tab ─────────────────────────────────────────
-function ProcessedStockTab() {
+function ProcessedStockTab({
+  onWriteOff,
+}: {
+  onWriteOff: (s: ProcessedMaterialStock) => void;
+}) {
   const { t } = useTranslation();
   const list = useCrudList<ProcessedMaterialStock>({
     queryKey: ['processed-stock'],
@@ -325,6 +629,16 @@ function ProcessedStockTab() {
       r.is_low
         ? <span className="badge-red">{t('inventory.badges.low')}</span>
         : <span className="badge-green">{t('inventory.badges.ok')}</span>
+    )},
+    { key: 'actions', header: '', align: 'right', render: (r) => (
+      <button
+        className="btn-ghost px-2 py-1 text-xs text-red-600"
+        title={t('inventory.actions.writeOff')}
+        disabled={Number(r.quantity) <= 0}
+        onClick={() => onWriteOff(r)}
+      >
+        <Trash2 size={12} /> {t('inventory.actions.writeOff')}
+      </button>
     )},
   ];
   const exportColumns: ExportColumn<ProcessedMaterialStock>[] = [

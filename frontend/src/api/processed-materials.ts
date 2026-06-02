@@ -58,6 +58,7 @@ export interface ProcessedMaterialStock {
   item_name: string;
   item_sku: string;
   item_unit: string;
+  item_unit_cost: string;
   quantity: string;
   reorder_threshold: string;
   is_low: boolean;
@@ -143,6 +144,13 @@ export const processedMaterials = {
       reference?: string;
     }) =>
       api.post(`${ROOT}/stock/adjust/`, data).then((r) => r.data),
+    writeOff: (data: {
+      processed_material: string;
+      quantity: number;
+      note?: string;
+      reference?: string;
+    }) =>
+      api.post(`${ROOT}/stock/write-off/`, data).then((r) => r.data),
   },
 
   movements: {

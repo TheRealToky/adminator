@@ -90,6 +90,20 @@ class StockItem(BaseModel):
         return Decimal(target.reorder_threshold) if target else Decimal("0")
 
     @property
+    def item_unit_cost(self) -> Decimal:
+        """Per-unit cost used for write-offs / valuation.
+
+        Finished products use ``production_cost``; raw materials use
+        ``unit_cost``. Both reflect the latest stored value (write-offs at the
+        time of the loss are valued at the current cost on file).
+        """
+        if self.product_id and self.product is not None:
+            return Decimal(self.product.production_cost or 0)
+        if self.raw_material_id and self.raw_material is not None:
+            return Decimal(self.raw_material.unit_cost or 0)
+        return Decimal("0")
+
+    @property
     def is_low(self) -> bool:
         return self.quantity <= self.reorder_threshold
 

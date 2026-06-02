@@ -222,6 +222,11 @@ class ProcessedMaterialStock(BaseModel):
         return Decimal(self.processed_material.reorder_threshold)
 
     @property
+    def item_unit_cost(self) -> Decimal:
+        """Per-unit production cost — used for write-off valuation."""
+        return Decimal(self.processed_material.unit_cost or 0)
+
+    @property
     def is_low(self) -> bool:
         return self.quantity <= self.reorder_threshold
 

@@ -342,7 +342,8 @@
       "ok": "OK"
     },
     "actions": {
-      "adjust": "Adjust"
+      "adjust": "Adjust",
+      "writeOff": "Write off"
     },
     "empty": {
       "stock": "No stock yet",
@@ -358,6 +359,22 @@
       "currentOnHand": "Current on-hand: <strong>{{qty}} {{unit}}</strong>. Enter a positive number to add stock, negative to remove (e.g. waste).",
       "delta": "Delta ({{unit}})",
       "recorded": "Adjustment recorded."
+    },
+    "writeOff": {
+      "title": "Write off: {{name}}",
+      "lead": "Record items that can no longer be sold or used to produce — spoiled, expired, damaged, or otherwise lost. The cost (<strong>{{cost}} / {{unit}}</strong>) is booked as an expense.",
+      "leadZeroCost": "Record items that can no longer be sold or used to produce — spoiled, expired, damaged, or otherwise lost. No expense is booked because this item has no recorded cost.",
+      "quantity": "Quantity ({{unit}})",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "e.g. spoiled overnight, dropped, expired…",
+      "reference": "Reference (optional)",
+      "currentOnHand": "Current on-hand: <strong>{{qty}} {{unit}}</strong>.",
+      "expenseToBook": "Expense to book",
+      "submit": "Write off",
+      "submitting": "Writing off…",
+      "recorded": "Wrote off {{qty}} {{unit}} of {{name}}.",
+      "recordedNoCost": "Wrote off {{qty}} {{unit}} of {{name}} (no expense — zero cost).",
+      "exceedsOnHand": "Cannot write off more than the {{qty}} {{unit}} on hand."
     },
     "exportCols": {
       "sku": "SKU",
@@ -838,7 +855,8 @@
       "produceBatch": "Produce batch",
       "recipe": "Recipe (ingredients)",
       "usedInProducts": "Used in products",
-      "adjustStock": "Adjust stock"
+      "adjustStock": "Adjust stock",
+      "writeOffStock": "Write off stock"
     },
     "fields": {
       "sku": "SKU",
@@ -886,6 +904,22 @@
       "currentOnHand": "Current on-hand: <strong>{{qty}} {{unit}}</strong>. Positive to add, negative to remove (e.g. waste).",
       "delta": "Delta ({{unit}})",
       "recorded": "Adjustment recorded."
+    },
+    "writeOff": {
+      "title": "Write off: {{name}}",
+      "lead": "Record processed material that can no longer be sold or used to produce — spoiled, expired, or otherwise lost. The production cost (<strong>{{cost}} / {{unit}}</strong>) is booked as an expense.",
+      "leadZeroCost": "Record processed material that can no longer be sold or used to produce. No expense is booked because this material has no recorded cost.",
+      "quantity": "Quantity ({{unit}})",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "e.g. shelf-life expired, contamination…",
+      "reference": "Reference (optional)",
+      "currentOnHand": "Current on-hand: <strong>{{qty}} {{unit}}</strong>.",
+      "expenseToBook": "Expense to book",
+      "submit": "Write off",
+      "submitting": "Writing off…",
+      "recorded": "Wrote off {{qty}} {{unit}} of {{name}}.",
+      "recordedNoCost": "Wrote off {{qty}} {{unit}} of {{name}} (no expense — zero cost).",
+      "exceedsOnHand": "Cannot write off more than the {{qty}} {{unit}} on hand."
     },
     "produce": {
       "title": "Produce batch — {{name}}",

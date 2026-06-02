@@ -96,9 +96,10 @@ function MaterialsTab() {
   const [recipeFor, setRecipeFor] = useState<ProcessedMaterial | null>(null);
   const [usageFor, setUsageFor] = useState<ProcessedMaterial | null>(null);
 
-  // Adjust + produce
+  // Adjust + produce + write-off
   const [adjustFor, setAdjustFor] = useState<ProcessedMaterial | null>(null);
   const [produceFor, setProduceFor] = useState<ProcessedMaterial | null>(null);
+  const [writeOffFor, setWriteOffFor] = useState<ProcessedMaterial | null>(null);
 
   const save = useMutation({
     mutationFn: () =>
@@ -161,6 +162,14 @@ function MaterialsTab() {
           onClick={(e) => { e.stopPropagation(); setAdjustFor(r); }}
         >
           <Sliders size={14} />
+        </button>
+        <button
+          className="btn-ghost p-1.5 text-red-500"
+          title={t('processedMaterials.actions.writeOffStock')}
+          disabled={Number(r.stock_quantity) <= 0}
+          onClick={(e) => { e.stopPropagation(); setWriteOffFor(r); }}
+        >
+          <Trash2 size={14} />
         </button>
         <button className="btn-ghost p-1.5" onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
           <Pencil size={14} />
@@ -283,6 +292,7 @@ function MaterialsTab() {
       <RecipeModal open={!!recipeFor} material={recipeFor} onClose={() => setRecipeFor(null)} />
       <UsageModal open={!!usageFor} material={usageFor} onClose={() => setUsageFor(null)} />
       <AdjustModal material={adjustFor} onClose={() => setAdjustFor(null)} />
+      <WriteOffModal material={writeOffFor} onClose={() => setWriteOffFor(null)} />
       <ProduceModal material={produceFor} onClose={() => setProduceFor(null)} />
 
       <ConfirmDialog
@@ -722,6 +732,141 @@ function AdjustModal({ material, onClose }: { material: ProcessedMaterial | null
         <div>
           <label className="label">{t('common.noteOptional')}</label>
           <textarea className="input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Write off processed-material stock ────────────────────────────────────
+function WriteOffModal({ material, onClose }: { material: ProcessedMaterial | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { t } = useTranslation();
+  const [quantity, setQuantity] = useState('');
+  const [note, setNote] = useState('');
+  const [reference, setReference] = useState('');
+
+  const mutate = useMutation({
+    mutationFn: () => processedMaterials.stock.writeOff({
+      processed_material: material!.id,
+      quantity: Number(quantity),
+      note,
+      reference,
+    }),
+    onSuccess: () => {
+      const qty = Number(quantity);
+      const expense = qty * Number(material?.unit_cost ?? 0);
+      toast.success(
+        expense > 0
+          ? t('processedMaterials.writeOff.recorded', {
+              qty: formatNumber(qty, 2),
+              unit: material?.unit ?? '',
+              name: material?.name ?? '',
+            })
+          : t('processedMaterials.writeOff.recordedNoCost', {
+              qty: formatNumber(qty, 2),
+              unit: material?.unit ?? '',
+              name: material?.name ?? '',
+            }),
+      );
+      qc.invalidateQueries({ queryKey: ['processed-materials'] });
+      qc.invalidateQueries({ queryKey: ['processed-stock'] });
+      qc.invalidateQueries({ queryKey: ['processed-movements'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      onClose();
+      setQuantity(''); setNote(''); setReference('');
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  if (!material) return null;
+  const onHand = Number(material.stock_quantity);
+  const unitCost = Number(material.unit_cost || 0);
+  const qty = Number(quantity) || 0;
+  const exceedsStock = qty > onHand;
+  const expense = qty * unitCost;
+
+  return (
+    <Modal
+      open={!!material}
+      onClose={onClose}
+      title={t('processedMaterials.writeOff.title', { name: material.name })}
+      size="sm"
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
+          <button
+            className="btn-primary"
+            disabled={!quantity || qty <= 0 || exceedsStock || mutate.isPending}
+            onClick={() => mutate.mutate()}
+          >
+            {mutate.isPending
+              ? t('processedMaterials.writeOff.submitting')
+              : t('processedMaterials.writeOff.submit')}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-500 mb-3">
+        {unitCost > 0 ? (
+          <Trans
+            i18nKey="processedMaterials.writeOff.lead"
+            values={{ cost: formatMoney(unitCost), unit: material.unit }}
+            components={{ 1: <strong /> }}
+          />
+        ) : (
+          t('processedMaterials.writeOff.leadZeroCost')
+        )}
+      </p>
+      <p
+        className="text-sm text-slate-500 mb-3"
+        dangerouslySetInnerHTML={{
+          __html: t('processedMaterials.writeOff.currentOnHand', {
+            qty: formatNumber(onHand, 2),
+            unit: material.unit,
+          }),
+        }}
+      />
+      <div className="space-y-3">
+        <div>
+          <label className="label">
+            {t('processedMaterials.writeOff.quantity', { unit: material.unit })}
+          </label>
+          <input
+            autoFocus type="number" step="0.01" min="0" max={onHand}
+            className="input"
+            value={quantity} onChange={(e) => setQuantity(e.target.value)}
+          />
+          {exceedsStock && (
+            <p className="text-xs text-red-600 mt-1">
+              {t('processedMaterials.writeOff.exceedsOnHand', {
+                qty: formatNumber(onHand, 2),
+                unit: material.unit,
+              })}
+            </p>
+          )}
+        </div>
+        <div className="rounded-md bg-slate-50 border border-slate-200 px-3 py-2 flex items-center justify-between">
+          <span className="text-xs text-slate-600">{t('processedMaterials.writeOff.expenseToBook')}</span>
+          <span className="text-sm font-semibold tabular-nums">
+            {formatMoney(expense)}
+          </span>
+        </div>
+        <div>
+          <label className="label">{t('processedMaterials.writeOff.reason')}</label>
+          <textarea
+            className="input" rows={2}
+            placeholder={t('processedMaterials.writeOff.reasonPlaceholder')}
+            value={note} onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">{t('processedMaterials.writeOff.reference')}</label>
+          <input
+            className="input"
+            value={reference} onChange={(e) => setReference(e.target.value)}
+          />
         </div>
       </div>
     </Modal>

@@ -224,6 +224,66 @@ def produce_batch(
 
 
 @transaction.atomic
+def record_waste(
+    *,
+    processed_material: ProcessedMaterial,
+    quantity: Decimal,
+    note: str = "",
+    reference: str = "",
+    user: "User | None" = None,
+) -> tuple[ProcessedMaterialStockMovement, "object | None"]:
+    """Write off processed-material stock as waste/loss AND book the cost.
+
+    The expense is booked at ``processed_material.unit_cost × quantity`` — i.e.
+    only the production cost of the wasted units flows into the P&L, mirroring
+    how raw materials and finished products are written off.
+
+    Returns ``(movement, expense)``. ``expense`` is ``None`` only when the
+    per-unit cost is zero (nothing meaningful to charge).
+    """
+    # Local imports to avoid finance↔inventory↔processed-materials cycles
+    # at module load.
+    from apps.finance.models import Expense, ExpenseCategory
+    from apps.inventory.services import INVENTORY_WRITE_OFF_CATEGORY
+
+    quantity = Decimal(quantity)
+    if quantity <= 0:
+        raise ValueError("Waste quantity must be positive.")
+
+    unit_cost = Decimal(processed_material.unit_cost or 0)
+    stock = ensure_stock(processed_material)
+
+    movement = adjust_stock(
+        stock=stock,
+        quantity_delta=-quantity,
+        reason=ProcessedMaterialMovementReason.WASTE,
+        reference=reference,
+        note=note,
+        user=user,
+    )
+
+    write_off_amount = (unit_cost * quantity).quantize(Decimal("0.01"))
+    expense = None
+    if write_off_amount > 0:
+        category, _ = ExpenseCategory.objects.get_or_create(
+            name=INVENTORY_WRITE_OFF_CATEGORY,
+            defaults={
+                "description": "Stock written off as waste, spoilage, expiry or loss.",
+            },
+        )
+        expense = Expense.objects.create(
+            category=category,
+            title=f"Write-off: {processed_material.name}",
+            amount=write_off_amount,
+            reference=reference or f"WASTE-PM-{movement.id}",
+            notes=note,
+            recorded_by=user,
+        )
+
+    return movement, expense
+
+
+@transaction.atomic
 def consume_for_product_run(
     *,
     product: "Product",

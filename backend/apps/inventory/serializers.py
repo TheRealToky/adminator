@@ -14,6 +14,9 @@ class StockItemSerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(read_only=True)
     item_sku = serializers.CharField(read_only=True)
     item_unit = serializers.CharField(read_only=True)
+    item_unit_cost = serializers.DecimalField(
+        max_digits=14, decimal_places=4, read_only=True
+    )
     reorder_threshold = serializers.DecimalField(
         max_digits=14, decimal_places=4, read_only=True
     )
@@ -23,12 +26,12 @@ class StockItemSerializer(serializers.ModelSerializer):
         model = StockItem
         fields = (
             "id", "kind", "product", "raw_material",
-            "item_name", "item_sku", "item_unit",
+            "item_name", "item_sku", "item_unit", "item_unit_cost",
             "quantity", "reorder_threshold", "is_low",
             "created_at", "updated_at",
         )
         read_only_fields = (
-            "id", "kind", "item_name", "item_sku", "item_unit",
+            "id", "kind", "item_name", "item_sku", "item_unit", "item_unit_cost",
             "reorder_threshold", "is_low", "created_at", "updated_at",
         )
 

@@ -27,6 +27,7 @@ export const processedMaterials = {
         list: (params = {}) => api.get(`${ROOT}/stock/`, { params }).then((r) => r.data),
         low: () => api.get(`${ROOT}/stock/low-stock/`).then((r) => r.data),
         adjust: (data) => api.post(`${ROOT}/stock/adjust/`, data).then((r) => r.data),
+        writeOff: (data) => api.post(`${ROOT}/stock/write-off/`, data).then((r) => r.data),
     },
     movements: {
         list: (params = {}) => api.get(`${ROOT}/movements/`, { params })

@@ -23,6 +23,7 @@ from .serializers import (
     ProcessedMaterialStockAdjustSerializer,
     ProcessedMaterialStockMovementSerializer,
     ProcessedMaterialStockSerializer,
+    ProcessedMaterialStockWriteOffSerializer,
     ProductProcessedMaterialUsageSerializer,
 )
 
@@ -97,6 +98,27 @@ class ProcessedMaterialStockViewSet(mixins.ListModelMixin,
         movement = ser.save()
         return Response(
             ProcessedMaterialStockMovementSerializer(movement).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=["post"], url_path="write-off")
+    def write_off(self, request):
+        """Record waste/loss: decrements stock AND books a finance Expense."""
+        ser = ProcessedMaterialStockWriteOffSerializer(
+            data=request.data, context={"request": request}
+        )
+        ser.is_valid(raise_exception=True)
+        movement, expense = ser.save()
+        return Response(
+            {
+                "movement": ProcessedMaterialStockMovementSerializer(movement).data,
+                "expense": {
+                    "id": str(expense.id),
+                    "category_name": expense.category.name,
+                    "amount": str(expense.amount),
+                    "incurred_on": expense.incurred_on.isoformat(),
+                } if expense else None,
+            },
             status=status.HTTP_201_CREATED,
         )
 
