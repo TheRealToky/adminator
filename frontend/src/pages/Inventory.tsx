@@ -16,7 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
 import { useCrudList } from '@/hooks/useCrudList';
-import { formatNumber, formatMoney, formatDateTime } from '@/lib/format';
+import { formatQuantity, formatMoney, formatDateTime } from '@/lib/format';
 import type { StockItem, StockMovement } from '@/api/types';
 import type { ProcessedMaterialStock } from '@/api/processed-materials';
 
@@ -93,10 +93,10 @@ function useStockColumns(
     },
     { key: 'qty', header: t('inventory.columns.onHand'), align: 'right', render: (r) => (
       <span className={r.is_low ? 'text-red-600 font-semibold' : 'font-medium'}>
-        {formatNumber(r.quantity, 2)} {r.item_unit}
+        {formatQuantity(r.quantity)} {r.item_unit}
       </span>
     )},
-    { key: 'thresh', header: t('inventory.columns.reorder'), align: 'right', render: (r) => formatNumber(r.reorder_threshold, 2) },
+    { key: 'thresh', header: t('inventory.columns.reorder'), align: 'right', render: (r) => formatQuantity(r.reorder_threshold) },
     { key: 'status', header: t('inventory.columns.status'), render: (r) =>
       r.is_low
         ? <span className="badge-red">{t('inventory.badges.low')}</span>
@@ -221,10 +221,10 @@ function MovementsTab() {
     { key: 'reason', header: t('inventory.columns.reason'), render: (r) => <span className="badge-gray">{r.reason_display}</span> },
     { key: 'delta', header: t('inventory.columns.delta'), align: 'right', render: (r) => (
       <span className={Number(r.quantity_delta) >= 0 ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold'}>
-        {Number(r.quantity_delta) > 0 ? '+' : ''}{formatNumber(r.quantity_delta, 2)} {r.item_unit}
+        {Number(r.quantity_delta) > 0 ? '+' : ''}{formatQuantity(r.quantity_delta)} {r.item_unit}
       </span>
     )},
-    { key: 'balance', header: t('inventory.columns.after'), align: 'right', render: (r) => `${formatNumber(r.balance_after, 2)} ${r.item_unit}` },
+    { key: 'balance', header: t('inventory.columns.after'), align: 'right', render: (r) => `${formatQuantity(r.balance_after)} ${r.item_unit}` },
     { key: 'ref', header: t('inventory.columns.ref'), render: (r) => <span className="font-mono text-xs">{r.reference || '—'}</span> },
     { key: 'who', header: t('inventory.columns.by'), render: (r) => r.created_by_name ?? '—' },
   ];
@@ -309,7 +309,7 @@ function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () 
         className="text-sm text-slate-500 mb-3"
         dangerouslySetInnerHTML={{
           __html: t('inventory.adjust.currentOnHand', {
-            qty: formatNumber(stock.quantity, 2),
+            qty: formatQuantity(stock.quantity),
             unit: stock.item_unit,
           }),
         }}
@@ -318,7 +318,7 @@ function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () 
         <div>
           <label className="label">{t('inventory.adjust.delta', { unit: stock.item_unit })}</label>
           <input
-            type="number" step="0.01" className="input"
+            type="number" step="0.0001" className="input"
             value={delta} onChange={(e) => setDelta(e.target.value)} autoFocus
           />
         </div>
@@ -353,12 +353,12 @@ function WriteOffModal({ stock, onClose }: { stock: StockItem | null; onClose: (
       toast.success(
         expense > 0
           ? t('inventory.writeOff.recorded', {
-              qty: formatNumber(qty, 2),
+              qty: formatQuantity(qty),
               unit: stock?.item_unit ?? '',
               name: stock?.item_name ?? '',
             })
           : t('inventory.writeOff.recordedNoCost', {
-              qty: formatNumber(qty, 2),
+              qty: formatQuantity(qty),
               unit: stock?.item_unit ?? '',
               name: stock?.item_name ?? '',
             }),
@@ -415,7 +415,7 @@ function WriteOffModal({ stock, onClose }: { stock: StockItem | null; onClose: (
         className="text-sm text-slate-500 mb-3"
         dangerouslySetInnerHTML={{
           __html: t('inventory.writeOff.currentOnHand', {
-            qty: formatNumber(onHand, 2),
+            qty: formatQuantity(onHand),
             unit: stock.item_unit,
           }),
         }}
@@ -426,14 +426,14 @@ function WriteOffModal({ stock, onClose }: { stock: StockItem | null; onClose: (
             {t('inventory.writeOff.quantity', { unit: stock.item_unit })}
           </label>
           <input
-            autoFocus type="number" step="0.01" min="0" max={onHand}
+            autoFocus type="number" step="0.0001" min="0" max={onHand}
             className="input"
             value={quantity} onChange={(e) => setQuantity(e.target.value)}
           />
           {exceedsStock && (
             <p className="text-xs text-red-600 mt-1">
               {t('inventory.writeOff.exceedsOnHand', {
-                qty: formatNumber(onHand, 2),
+                qty: formatQuantity(onHand),
                 unit: stock.item_unit,
               })}
             </p>
@@ -485,12 +485,12 @@ function ProcessedWriteOffModal({
       toast.success(
         expense > 0
           ? t('processedMaterials.writeOff.recorded', {
-              qty: formatNumber(qty, 2),
+              qty: formatQuantity(qty),
               unit: stock?.item_unit ?? '',
               name: stock?.item_name ?? '',
             })
           : t('processedMaterials.writeOff.recordedNoCost', {
-              qty: formatNumber(qty, 2),
+              qty: formatQuantity(qty),
               unit: stock?.item_unit ?? '',
               name: stock?.item_name ?? '',
             }),
@@ -549,7 +549,7 @@ function ProcessedWriteOffModal({
         className="text-sm text-slate-500 mb-3"
         dangerouslySetInnerHTML={{
           __html: t('processedMaterials.writeOff.currentOnHand', {
-            qty: formatNumber(onHand, 2),
+            qty: formatQuantity(onHand),
             unit: stock.item_unit,
           }),
         }}
@@ -560,14 +560,14 @@ function ProcessedWriteOffModal({
             {t('processedMaterials.writeOff.quantity', { unit: stock.item_unit })}
           </label>
           <input
-            autoFocus type="number" step="0.01" min="0" max={onHand}
+            autoFocus type="number" step="0.0001" min="0" max={onHand}
             className="input"
             value={quantity} onChange={(e) => setQuantity(e.target.value)}
           />
           {exceedsStock && (
             <p className="text-xs text-red-600 mt-1">
               {t('processedMaterials.writeOff.exceedsOnHand', {
-                qty: formatNumber(onHand, 2),
+                qty: formatQuantity(onHand),
                 unit: stock.item_unit,
               })}
             </p>
@@ -619,11 +619,11 @@ function ProcessedStockTab({
     )},
     { key: 'qty', header: t('inventory.columns.onHand'), align: 'right', render: (r) => (
       <span className={r.is_low ? 'text-red-600 font-semibold' : 'font-medium'}>
-        {formatNumber(r.quantity, 2)} {r.item_unit}
+        {formatQuantity(r.quantity)} {r.item_unit}
       </span>
     )},
     { key: 'thresh', header: t('inventory.columns.reorder'), align: 'right', render: (r) => (
-      formatNumber(r.reorder_threshold, 2)
+      formatQuantity(r.reorder_threshold)
     )},
     { key: 'status', header: t('inventory.columns.status'), render: (r) => (
       r.is_low

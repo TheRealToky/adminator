@@ -27,6 +27,21 @@ export function formatNumber(value: number | string | null | undefined, digits =
   }).format(num);
 }
 
+/**
+ * Format a quantity expressed in a unit of measure. Shows up to 4 decimal
+ * places (10^-4 precision) while trimming trailing zeros, so whole numbers
+ * stay clean ("5") but fine quantities are not rounded away ("5.0025").
+ */
+export function formatQuantity(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (Number.isNaN(num)) return '—';
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 4,
+    minimumFractionDigits: 0,
+  }).format(num);
+}
+
 export function formatDate(input: string | Date | null | undefined, options?: Intl.DateTimeFormatOptions): string {
   if (!input) return '—';
   const date = typeof input === 'string' ? new Date(input) : input;

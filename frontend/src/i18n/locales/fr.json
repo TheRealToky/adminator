@@ -259,6 +259,19 @@
       "recording": "Enregistrement…",
       "receiveStock": "Réceptionner du stock"
     },
+    "actions": {
+      "usedIn": "Utilisé dans"
+    },
+    "usage": {
+      "title": "Utilisé dans — {{name}}",
+      "lead": "Produits et matières transformées dont la recette inclut <1>cette matière première</1>.",
+      "empty": "Pas encore utilisé dans un produit ou une matière transformée.",
+      "productsHeader": "Utilisé directement dans des produits",
+      "processedHeader": "Utilisé dans des matières transformées",
+      "badgeProduct": "Produit",
+      "badgeProcessed": "Transformée",
+      "hint": "Pour ajouter une utilisation, ouvrez la recette du produit ou de la matière transformée concernée."
+    },
     "exportCols": {
       "sku": "SKU",
       "name": "Nom",

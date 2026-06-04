@@ -16,7 +16,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
-import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/lib/format';
+import { formatDate, formatDateTime, formatMoney, formatQuantity } from '@/lib/format';
 import type { ProductionRun } from '@/api/types';
 
 export function ProductionPage() {
@@ -64,7 +64,7 @@ export function ProductionPage() {
         <p className="text-xs text-slate-500 font-mono">{r.product_sku}</p>
       </div>
     )},
-    { key: 'qty', header: t('production.columns.quantity'), align: 'right', render: (r) => formatNumber(r.quantity, 2) },
+    { key: 'qty', header: t('production.columns.quantity'), align: 'right', render: (r) => formatQuantity(r.quantity) },
     { key: 'cost', header: t('production.columns.cost'), align: 'right', render: (r) => formatMoney(r.cost) },
     { key: 'status', header: t('production.columns.status'), render: (r) => {
       const cls = r.status === 'completed' ? 'badge-green'
@@ -166,7 +166,7 @@ export function ProductionPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">{t('production.fields.quantity')}</label>
-              <input type="number" step="0.01" className="input" value={qty} onChange={(e) => setQty(e.target.value)} />
+              <input type="number" step="0.0001" className="input" value={qty} onChange={(e) => setQty(e.target.value)} />
             </div>
             <div>
               <label className="label">{t('production.fields.scheduledFor')}</label>

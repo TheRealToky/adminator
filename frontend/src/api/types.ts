@@ -44,6 +44,23 @@ export interface Supplier {
   is_active: boolean;
 }
 
+export interface RawMaterialUsedInProduct {
+  id: UUID;
+  product: UUID;
+  product_name: string;
+  product_sku: string;
+  quantity: string;
+}
+
+export interface RawMaterialUsedInProcessed {
+  id: UUID;
+  processed_material: UUID;
+  processed_material_name: string;
+  processed_material_sku: string;
+  processed_material_unit: string;
+  quantity: string;
+}
+
 export interface RawMaterial {
   id: UUID;
   sku: string;
@@ -54,6 +71,8 @@ export interface RawMaterial {
   preferred_supplier: UUID | null;
   preferred_supplier_name: string | null;
   is_active: boolean;
+  used_in_products?: RawMaterialUsedInProduct[];
+  used_in_processed_materials?: RawMaterialUsedInProcessed[];
 }
 
 export interface RecipeItem {

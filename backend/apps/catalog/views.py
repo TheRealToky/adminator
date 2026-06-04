@@ -37,7 +37,14 @@ class SupplierViewSet(viewsets.ModelViewSet):
 
 
 class RawMaterialViewSet(viewsets.ModelViewSet):
-    queryset = RawMaterial.objects.select_related("preferred_supplier").all()
+    queryset = (
+        RawMaterial.objects.select_related("preferred_supplier")
+        .prefetch_related(
+            "used_in__product",
+            "used_in_processed__processed_material",
+        )
+        .all()
+    )
     serializer_class = RawMaterialSerializer
     permission_classes = [ReadOnlyOrManager]
     search_fields = ["name", "sku"]

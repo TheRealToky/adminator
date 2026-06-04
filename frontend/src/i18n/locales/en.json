@@ -259,6 +259,19 @@
       "recording": "Recording…",
       "receiveStock": "Receive stock"
     },
+    "actions": {
+      "usedIn": "Used in"
+    },
+    "usage": {
+      "title": "Used in — {{name}}",
+      "lead": "Products and processed materials whose recipe includes <1>this raw material</1>.",
+      "empty": "Not used in any product or processed material yet.",
+      "productsHeader": "Used directly in products",
+      "processedHeader": "Used in processed materials",
+      "badgeProduct": "Product",
+      "badgeProcessed": "Processed",
+      "hint": "To add a new usage, open the recipe of the target product or processed material."
+    },
     "exportCols": {
       "sku": "SKU",
       "name": "Name",

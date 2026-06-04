@@ -25,7 +25,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
-import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/lib/format';
+import { formatDate, formatDateTime, formatMoney, formatNumber, formatQuantity } from '@/lib/format';
 
 type Tab = 'materials' | 'batches' | 'movements';
 
@@ -120,12 +120,12 @@ function MaterialsTab() {
     { key: 'name', header: t('processedMaterials.columns.name'), render: (r) => <span className="font-medium">{r.name}</span> },
     { key: 'unit', header: t('processedMaterials.columns.unit'), render: (r) => r.unit },
     { key: 'yield', header: t('processedMaterials.columns.yieldBatch'), align: 'right', render: (r) => (
-      `${formatNumber(r.yield_per_batch)} ${r.unit}`
+      `${formatQuantity(r.yield_per_batch)} ${r.unit}`
     )},
     { key: 'cost', header: t('processedMaterials.columns.costUnit'), align: 'right', render: (r) => formatMoney(r.unit_cost) },
     { key: 'stock', header: t('processedMaterials.columns.onHand'), align: 'right', render: (r) => (
       <span className={r.is_low ? 'text-red-600 font-semibold' : 'font-medium'}>
-        {formatNumber(r.stock_quantity, 1)} {r.unit}
+        {formatQuantity(r.stock_quantity)} {r.unit}
       </span>
     )},
     { key: 'status', header: '', render: (r) => (
@@ -263,7 +263,7 @@ function MaterialsTab() {
           </div>
           <div>
             <label className="label">{t('processedMaterials.fields.yieldPerBatch')}</label>
-            <input type="number" step="0.01" className="input" value={form.yield_per_batch ?? '1'}
+            <input type="number" step="0.0001" className="input" value={form.yield_per_batch ?? '1'}
               onChange={(e) => setForm({ ...form, yield_per_batch: e.target.value })} />
           </div>
           <div>
@@ -273,7 +273,7 @@ function MaterialsTab() {
           </div>
           <div>
             <label className="label">{t('processedMaterials.fields.reorderThreshold')}</label>
-            <input type="number" step="0.01" className="input" value={form.reorder_threshold ?? '0'}
+            <input type="number" step="0.0001" className="input" value={form.reorder_threshold ?? '0'}
               onChange={(e) => setForm({ ...form, reorder_threshold: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
@@ -417,7 +417,7 @@ function RecipeModal({
         <Trans
           i18nKey="processedMaterials.recipe.lead"
           values={{
-            yield: formatNumber(material?.yield_per_batch ?? 0),
+            yield: formatQuantity(material?.yield_per_batch ?? 0),
             unit: material?.unit ?? '',
           }}
           components={{ 1: <strong /> }}
@@ -444,7 +444,7 @@ function RecipeModal({
               )}
             </span>
             <span className="col-span-3 text-right text-sm">
-              {formatNumber(it.quantity, 2)} {it.ingredientUnit}
+              {formatQuantity(it.quantity)} {it.ingredientUnit}
             </span>
             <span className="col-span-2 text-right text-sm text-slate-600">
               {formatMoney(it.lineCost)}
@@ -565,7 +565,7 @@ function RecipeModal({
         <div className="flex items-center justify-between text-xs text-slate-500">
           <span>
             {t('processedMaterials.recipe.perUnit', {
-              yield: formatNumber(material?.yield_per_batch ?? 0),
+              yield: formatQuantity(material?.yield_per_batch ?? 0),
               unit: material?.unit ?? '',
             })}
           </span>
@@ -633,7 +633,7 @@ function UsageModal({
           <li key={it.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-center">
             <span className="col-span-7 text-sm">{it.product_name}</span>
             <span className="col-span-4 text-right text-sm">
-              {formatNumber(it.quantity, 2)} {material?.unit}
+              {formatQuantity(it.quantity)} {material?.unit}
             </span>
             <button
               className="col-span-1 text-red-500 hover:text-red-700 justify-self-end"
@@ -718,7 +718,7 @@ function AdjustModal({ material, onClose }: { material: ProcessedMaterial | null
         className="text-sm text-slate-500 mb-3"
         dangerouslySetInnerHTML={{
           __html: t('processedMaterials.adjust.currentOnHand', {
-            qty: formatNumber(material.stock_quantity, 2),
+            qty: formatQuantity(material.stock_quantity),
             unit: material.unit,
           }),
         }}
@@ -726,7 +726,7 @@ function AdjustModal({ material, onClose }: { material: ProcessedMaterial | null
       <div className="space-y-3">
         <div>
           <label className="label">{t('processedMaterials.adjust.delta', { unit: material.unit })}</label>
-          <input autoFocus type="number" step="0.01" className="input"
+          <input autoFocus type="number" step="0.0001" className="input"
             value={delta} onChange={(e) => setDelta(e.target.value)} />
         </div>
         <div>
@@ -759,12 +759,12 @@ function WriteOffModal({ material, onClose }: { material: ProcessedMaterial | nu
       toast.success(
         expense > 0
           ? t('processedMaterials.writeOff.recorded', {
-              qty: formatNumber(qty, 2),
+              qty: formatQuantity(qty),
               unit: material?.unit ?? '',
               name: material?.name ?? '',
             })
           : t('processedMaterials.writeOff.recordedNoCost', {
-              qty: formatNumber(qty, 2),
+              qty: formatQuantity(qty),
               unit: material?.unit ?? '',
               name: material?.name ?? '',
             }),
@@ -823,7 +823,7 @@ function WriteOffModal({ material, onClose }: { material: ProcessedMaterial | nu
         className="text-sm text-slate-500 mb-3"
         dangerouslySetInnerHTML={{
           __html: t('processedMaterials.writeOff.currentOnHand', {
-            qty: formatNumber(onHand, 2),
+            qty: formatQuantity(onHand),
             unit: material.unit,
           }),
         }}
@@ -834,14 +834,14 @@ function WriteOffModal({ material, onClose }: { material: ProcessedMaterial | nu
             {t('processedMaterials.writeOff.quantity', { unit: material.unit })}
           </label>
           <input
-            autoFocus type="number" step="0.01" min="0" max={onHand}
+            autoFocus type="number" step="0.0001" min="0" max={onHand}
             className="input"
             value={quantity} onChange={(e) => setQuantity(e.target.value)}
           />
           {exceedsStock && (
             <p className="text-xs text-red-600 mt-1">
               {t('processedMaterials.writeOff.exceedsOnHand', {
-                qty: formatNumber(onHand, 2),
+                qty: formatQuantity(onHand),
                 unit: material.unit,
               })}
             </p>
@@ -890,7 +890,7 @@ function ProduceModal({ material, onClose }: { material: ProcessedMaterial | nul
     }),
     onSuccess: (batch) => {
       toast.success(t('processedMaterials.produce.produced', {
-        qty: formatNumber(batch.quantity_produced, 1),
+        qty: formatQuantity(batch.quantity_produced),
         unit: material?.unit ?? '',
       }));
       qc.invalidateQueries({ queryKey: ['processed-materials'] });
@@ -929,7 +929,7 @@ function ProduceModal({ material, onClose }: { material: ProcessedMaterial | nul
         className="text-sm text-slate-500 mb-3"
         dangerouslySetInnerHTML={{
           __html: t('processedMaterials.produce.lead', {
-            yield: formatNumber(material.yield_per_batch),
+            yield: formatQuantity(material.yield_per_batch),
             unit: material.unit,
             projected: formatNumber(projected, 0),
           }),
@@ -972,9 +972,9 @@ function BatchesTab() {
         <p className="text-xs text-slate-500 font-mono">{r.processed_material_sku}</p>
       </div>
     )},
-    { key: 'batches', header: t('processedMaterials.batches.columns.batches'), align: 'right', render: (r) => formatNumber(r.batches, 2) },
+    { key: 'batches', header: t('processedMaterials.batches.columns.batches'), align: 'right', render: (r) => formatQuantity(r.batches) },
     { key: 'qty', header: t('processedMaterials.batches.columns.produced'), align: 'right', render: (r) => (
-      `${formatNumber(r.quantity_produced, 1)} ${r.processed_material_unit}`
+      `${formatQuantity(r.quantity_produced)} ${r.processed_material_unit}`
     )},
     { key: 'cost', header: t('processedMaterials.batches.columns.cost'), align: 'right', render: (r) => formatMoney(r.cost) },
     { key: 'when', header: t('processedMaterials.batches.columns.completed'), render: (r) => r.completed_at ? formatDateTime(r.completed_at) : '—' },
@@ -1039,11 +1039,11 @@ function MovementsTab() {
     { key: 'reason', header: t('processedMaterials.movements.columns.reason'), render: (r) => <span className="badge-gray">{r.reason_display}</span> },
     { key: 'delta', header: t('processedMaterials.movements.columns.delta'), align: 'right', render: (r) => (
       <span className={Number(r.quantity_delta) >= 0 ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold'}>
-        {Number(r.quantity_delta) > 0 ? '+' : ''}{formatNumber(r.quantity_delta, 2)} {r.item_unit}
+        {Number(r.quantity_delta) > 0 ? '+' : ''}{formatQuantity(r.quantity_delta)} {r.item_unit}
       </span>
     )},
     { key: 'balance', header: t('processedMaterials.movements.columns.after'), align: 'right', render: (r) => (
-      `${formatNumber(r.balance_after, 2)} ${r.item_unit}`
+      `${formatQuantity(r.balance_after)} ${r.item_unit}`
     )},
     { key: 'ref', header: t('processedMaterials.movements.columns.ref'), render: (r) => <span className="font-mono text-xs">{r.reference || '—'}</span> },
     { key: 'who', header: t('processedMaterials.movements.columns.by'), render: (r) => r.created_by_name ?? '—' },

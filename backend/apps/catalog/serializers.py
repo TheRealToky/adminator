@@ -25,19 +25,57 @@ class SupplierSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
+class RawMaterialUsedInProductSerializer(serializers.ModelSerializer):
+    """Nested view: a product recipe line that uses this raw material."""
+
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    product_sku = serializers.CharField(source="product.sku", read_only=True)
+
+    class Meta:
+        model = RecipeItem
+        fields = ("id", "product", "product_name", "product_sku", "quantity")
+        read_only_fields = fields
+
+
 class RawMaterialSerializer(serializers.ModelSerializer):
     preferred_supplier_name = serializers.CharField(
         source="preferred_supplier.name", read_only=True
     )
+    used_in_products = RawMaterialUsedInProductSerializer(
+        source="used_in", many=True, read_only=True
+    )
+    used_in_processed_materials = serializers.SerializerMethodField()
 
     class Meta:
         model = RawMaterial
         fields = (
             "id", "sku", "name", "unit", "unit_cost",
             "reorder_threshold", "preferred_supplier", "preferred_supplier_name",
-            "is_active", "created_at", "updated_at",
+            "is_active",
+            "used_in_products", "used_in_processed_materials",
+            "created_at", "updated_at",
         )
-        read_only_fields = ("id", "preferred_supplier_name", "created_at", "updated_at")
+        read_only_fields = (
+            "id", "preferred_supplier_name",
+            "used_in_products", "used_in_processed_materials",
+            "created_at", "updated_at",
+        )
+
+    def get_used_in_processed_materials(self, obj: RawMaterial) -> list[dict]:
+        # Imported lazily to avoid a cross-app import cycle at module load time
+        # (processed_materials depends on catalog).
+        items = obj.used_in_processed.select_related("processed_material").all()
+        return [
+            {
+                "id": str(item.id),
+                "processed_material": str(item.processed_material_id),
+                "processed_material_name": item.processed_material.name,
+                "processed_material_sku": item.processed_material.sku,
+                "processed_material_unit": item.processed_material.unit,
+                "quantity": str(item.quantity),
+            }
+            for item in items
+        ]
 
 
 class RecipeItemSerializer(serializers.ModelSerializer):

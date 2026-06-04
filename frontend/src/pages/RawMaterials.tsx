@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Tag, PackagePlus } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, PackagePlus, ChefHat, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { catalog, inventory } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
+import { processedMaterials as processedMaterialsApi } from '@/api/processed-materials';
 import { useCrudList } from '@/hooks/useCrudList';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SearchBar } from '@/components/ui/SearchBar';
@@ -16,7 +17,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
-import { formatMoney, formatNumber } from '@/lib/format';
+import { formatMoney, formatQuantity } from '@/lib/format';
 import type { RawMaterial } from '@/api/types';
 
 const empty: Partial<RawMaterial> = {
@@ -42,6 +43,7 @@ export function RawMaterialsPage() {
   const [toDelete, setToDelete] = useState<RawMaterial | null>(null);
   const [receiveOpen, setReceiveOpen] = useState<RawMaterial | null>(null);
   const [receiveQty, setReceiveQty] = useState('');
+  const [usageFor, setUsageFor] = useState<RawMaterial | null>(null);
 
   const save = useMutation({
     mutationFn: () =>
@@ -78,7 +80,7 @@ export function RawMaterialsPage() {
     { key: 'name', header: t('rawMaterials.columns.name'), render: (r) => <span className="font-medium">{r.name}</span> },
     { key: 'unit', header: t('rawMaterials.columns.unit'), render: (r) => r.unit },
     { key: 'cost', header: t('rawMaterials.columns.cost'), align: 'right', render: (r) => formatMoney(r.unit_cost) },
-    { key: 'thresh', header: t('rawMaterials.columns.reorder'), align: 'right', render: (r) => formatNumber(r.reorder_threshold, 2) },
+    { key: 'thresh', header: t('rawMaterials.columns.reorder'), align: 'right', render: (r) => formatQuantity(r.reorder_threshold) },
     { key: 'supplier', header: t('rawMaterials.columns.supplier'), render: (r) => r.preferred_supplier_name ?? '—' },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
@@ -88,6 +90,13 @@ export function RawMaterialsPage() {
           onClick={(e) => { e.stopPropagation(); setReceiveOpen(r); }}
         >
           <PackagePlus size={14} />
+        </button>
+        <button
+          className="btn-ghost p-1.5 text-blue-700"
+          title={t('rawMaterials.actions.usedIn')}
+          onClick={(e) => { e.stopPropagation(); setUsageFor(r); }}
+        >
+          <ChefHat size={14} />
         </button>
         <button className="btn-ghost p-1.5" onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
           <Pencil size={14} />
@@ -185,7 +194,7 @@ export function RawMaterialsPage() {
           </div>
           <div>
             <label className="label">{t('rawMaterials.fields.reorderThreshold')}</label>
-            <input type="number" step="0.01" className="input" value={form.reorder_threshold ?? '0'} onChange={(e) => setForm({ ...form, reorder_threshold: e.target.value })} />
+            <input type="number" step="0.0001" className="input" value={form.reorder_threshold ?? '0'} onChange={(e) => setForm({ ...form, reorder_threshold: e.target.value })} />
           </div>
           <div>
             <label className="label">{t('rawMaterials.fields.preferredSupplier')}</label>
@@ -228,7 +237,7 @@ export function RawMaterialsPage() {
           <label className="label">{t('rawMaterials.receive.qtyLabel', { unit: receiveOpen?.unit ?? '' })}</label>
           <input
             autoFocus
-            type="number" step="0.01"
+            type="number" step="0.0001"
             className="input"
             value={receiveQty}
             onChange={(e) => setReceiveQty(e.target.value)}
@@ -238,6 +247,8 @@ export function RawMaterialsPage() {
           </p>
         </div>
       </Modal>
+
+      <UsageModal material={usageFor} onClose={() => setUsageFor(null)} />
 
       <ConfirmDialog
         open={!!toDelete}
@@ -252,5 +263,133 @@ export function RawMaterialsPage() {
         }}
       />
     </>
+  );
+}
+
+// ── Usage modal (products & processed materials using this raw material) ──
+function UsageModal({
+  material: materialProp,
+  onClose,
+}: {
+  material: RawMaterial | null;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { t } = useTranslation();
+
+  // Read live material data so the list updates as we remove items, without
+  // depending on the parent list query to refresh.
+  const materialQuery = useQuery({
+    queryKey: ['raw-material', materialProp?.id],
+    queryFn: () => catalog.rawMaterials.get(materialProp!.id),
+    enabled: !!materialProp,
+  });
+  const material = materialQuery.data ?? materialProp;
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ['raw-material', material?.id] });
+    qc.invalidateQueries({ queryKey: ['raw-materials'] });
+    qc.invalidateQueries({ queryKey: ['materials-all'] });
+    qc.invalidateQueries({ queryKey: ['products'] });
+    qc.invalidateQueries({ queryKey: ['processed-materials'] });
+    qc.invalidateQueries({ queryKey: ['processed-materials-all'] });
+  };
+
+  const removeRecipeItem = useMutation({
+    mutationFn: (id: string) => catalog.recipes.remove(id),
+    onSuccess: () => { toast.success(t('common.removed')); invalidateAll(); },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+  const removeProcessedRecipeItem = useMutation({
+    mutationFn: (id: string) => processedMaterialsApi.recipes.remove(id),
+    onSuccess: () => { toast.success(t('common.removed')); invalidateAll(); },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  const products = material?.used_in_products ?? [];
+  const processed = material?.used_in_processed_materials ?? [];
+  const hasAny = products.length > 0 || processed.length > 0;
+
+  return (
+    <Modal
+      open={!!materialProp}
+      onClose={onClose}
+      title={t('rawMaterials.usage.title', { name: material?.name ?? '' })}
+      size="lg"
+    >
+      <p className="text-sm text-slate-500 mb-4">
+        <Trans i18nKey="rawMaterials.usage.lead" components={{ 1: <strong /> }} />
+      </p>
+
+      {!hasAny && (
+        <p className="px-3 py-6 text-center text-sm text-slate-400 border border-slate-200 rounded-md">
+          {t('rawMaterials.usage.empty')}
+        </p>
+      )}
+
+      {products.length > 0 && (
+        <section className="mb-4">
+          <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2 px-1">
+            {t('rawMaterials.usage.productsHeader')}
+          </h4>
+          <ul className="divide-y divide-slate-100 border border-slate-200 rounded-md">
+            {products.map((it) => (
+              <li key={it.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-center">
+                <span className="col-span-7 text-sm flex items-center gap-2">
+                  <span className="badge-gray">{t('rawMaterials.usage.badgeProduct')}</span>
+                  <span className="font-medium">{it.product_name}</span>
+                  <span className="text-xs text-slate-500 font-mono">{it.product_sku}</span>
+                </span>
+                <span className="col-span-4 text-right text-sm">
+                  {formatQuantity(it.quantity)} {material?.unit}
+                </span>
+                <button
+                  className="col-span-1 text-red-500 hover:text-red-700 justify-self-end"
+                  title={t('common.removed')}
+                  disabled={removeRecipeItem.isPending}
+                  onClick={() => removeRecipeItem.mutate(it.id)}
+                >
+                  <X size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {processed.length > 0 && (
+        <section>
+          <h4 className="text-xs uppercase tracking-wider text-slate-500 mb-2 px-1">
+            {t('rawMaterials.usage.processedHeader')}
+          </h4>
+          <ul className="divide-y divide-slate-100 border border-slate-200 rounded-md">
+            {processed.map((it) => (
+              <li key={it.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-center">
+                <span className="col-span-7 text-sm flex items-center gap-2">
+                  <span className="badge-blue">{t('rawMaterials.usage.badgeProcessed')}</span>
+                  <span className="font-medium">{it.processed_material_name}</span>
+                  <span className="text-xs text-slate-500 font-mono">{it.processed_material_sku}</span>
+                </span>
+                <span className="col-span-4 text-right text-sm">
+                  {formatQuantity(it.quantity)} {material?.unit}
+                </span>
+                <button
+                  className="col-span-1 text-red-500 hover:text-red-700 justify-self-end"
+                  title={t('common.removed')}
+                  disabled={removeProcessedRecipeItem.isPending}
+                  onClick={() => removeProcessedRecipeItem.mutate(it.id)}
+                >
+                  <X size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <p className="text-xs text-slate-500 mt-4">
+        {t('rawMaterials.usage.hint')}
+      </p>
+    </Modal>
   );
 }

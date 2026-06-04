@@ -16,7 +16,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
-import { formatDateTime, formatMoney, formatNumber } from '@/lib/format';
+import { formatDateTime, formatMoney, formatQuantity } from '@/lib/format';
 import type { Product, Sale } from '@/api/types';
 
 interface CartLine { product: Product; quantity: number; unit_price: number; }
@@ -208,7 +208,7 @@ export function SalesPage() {
                   <div className="col-span-3">
                     <label className="text-xs text-slate-500">{t('sales.cart.qty')}</label>
                     <input
-                      type="number" min="1" step="0.01" className="input py-1.5"
+                      type="number" min="1" step="0.0001" className="input py-1.5"
                       value={l.quantity}
                       onChange={(e) => updateLine(l.product.id, { quantity: Number(e.target.value) })}
                     />
@@ -293,7 +293,7 @@ export function SalesPage() {
                 {viewing.items.map((it) => (
                   <tr key={it.id}>
                     <td>{it.product_name}</td>
-                    <td className="text-right">{formatNumber(it.quantity, 2)}</td>
+                    <td className="text-right">{formatQuantity(it.quantity)}</td>
                     <td className="text-right">{formatMoney(it.unit_price)}</td>
                     <td className="text-right font-medium">{formatMoney(it.line_total)}</td>
                   </tr>

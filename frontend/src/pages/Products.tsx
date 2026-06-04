@@ -18,7 +18,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ExportMenu } from '@/components/ui/ExportMenu';
 import { fetchAllPaginated, type ExportColumn } from '@/lib/export';
-import { formatMoney, formatNumber } from '@/lib/format';
+import { formatMoney, formatQuantity } from '@/lib/format';
 import type { Product, RawMaterial, RecipeItem } from '@/api/types';
 
 const empty: Partial<Product> = {
@@ -414,7 +414,7 @@ function RecipeModal({
               {r.name}
             </span>
             <span className="col-span-3 text-right text-sm">
-              {formatNumber(r.quantity, 2)} {r.unit}
+              {formatQuantity(r.quantity)} {r.unit}
             </span>
             <span className="col-span-2 text-right text-sm text-slate-600">
               {formatMoney(r.lineCost)}
