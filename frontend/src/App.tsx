@@ -14,6 +14,7 @@ import { TransactionsPage } from './pages/Transactions';
 import { InvoicesPage } from './pages/Invoices';
 import { BudgetsPage } from './pages/Budgets';
 import { AssetsPage } from './pages/Assets';
+import { WalletsPage } from './pages/Wallets';
 import { UsersPage } from './pages/Users';
 import { ProcessedMaterialsPage } from './pages/ProcessedMaterials';
 
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="budgets" element={<BudgetsPage />} />
         <Route path="assets" element={<AssetsPage />} />
+        <Route path="wallets" element={<WalletsPage />} />
         <Route path="users" element={<UsersPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -5,6 +5,7 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from apps.catalog.models import Product
+from apps.finance.models import Wallet
 
 from . import services
 from .models import PaymentMethod, Sale, SaleChannel, SaleItem
@@ -31,6 +32,7 @@ class SaleSerializer(serializers.ModelSerializer):
     )
     channel_display = serializers.CharField(source="get_channel_display", read_only=True)
     profit = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    wallet_name = serializers.CharField(source="wallet.name", read_only=True)
 
     class Meta:
         model = Sale
@@ -40,12 +42,12 @@ class SaleSerializer(serializers.ModelSerializer):
             "payment_method", "payment_method_display",
             "customer_name", "customer_phone",
             "subtotal", "discount", "total", "cost_of_goods", "profit",
-            "notes", "served_by", "served_by_name", "items",
+            "notes", "served_by", "served_by_name", "wallet", "wallet_name", "items",
             "created_at", "updated_at",
         )
         read_only_fields = (
             "id", "receipt_number", "subtotal", "total", "cost_of_goods", "profit",
-            "items", "served_by_name", "payment_method_display", "channel_display",
+            "items", "served_by_name", "wallet_name", "payment_method_display", "channel_display",
             "created_at", "updated_at",
         )
 
@@ -73,6 +75,9 @@ class SaleCreateSerializer(serializers.Serializer):
     customer_phone = serializers.CharField(required=False, allow_blank=True)
     notes = serializers.CharField(required=False, allow_blank=True)
     occurred_at = serializers.DateTimeField(required=False)
+    wallet = serializers.PrimaryKeyRelatedField(
+        queryset=Wallet.objects.all(), required=False, allow_null=True
+    )
 
     def validate_items(self, value):
         if not value:
@@ -91,6 +96,7 @@ class SaleCreateSerializer(serializers.Serializer):
             notes=self.validated_data.get("notes", ""),
             occurred_at=self.validated_data.get("occurred_at"),
             user=user,
+            wallet=self.validated_data.get("wallet"),
         )
 
 

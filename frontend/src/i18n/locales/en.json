@@ -70,6 +70,7 @@
     "processedMaterials": "Processed materials",
     "rawMaterials": "Raw materials",
     "suppliers": "Suppliers",
+    "wallets": "Wallets",
     "transactions": "Transactions",
     "invoices": "Invoices",
     "budgets": "Budgets",
@@ -333,6 +334,12 @@
       "all": "Search stock items…",
       "processed": "Search processed materials…"
     },
+    "filter": {
+      "all": "All types",
+      "products": "Products",
+      "materials": "Raw materials",
+      "processed": "Processed"
+    },
     "columns": {
       "item": "Item",
       "type": "Type",
@@ -480,8 +487,13 @@
     },
     "fields": {
       "paymentMethod": "Payment method",
+      "wallet": "Wallet",
+      "walletNone": "Don't track in a wallet",
+      "walletCreditHint": "Credit sales aren't tied to a wallet until paid.",
       "channel": "Channel",
       "discount": "Discount",
+      "occurredAt": "Date & time",
+      "occurredAtHint": "Leave blank to use the current time",
       "customerName": "Customer name (optional)",
       "customerPhone": "Customer phone (optional)",
       "notes": "Notes"
@@ -596,6 +608,8 @@
         "card": "Card",
         "bank_transfer": "Bank Transfer"
       },
+      "wallet": "Wallet",
+      "walletNone": "Don't track in a wallet",
       "customerOptional": "Customer (optional)",
       "supplierOptional": "Supplier (optional)",
       "reference": "Reference / receipt #",
@@ -793,6 +807,93 @@
       "supplier": "Supplier",
       "reference": "Reference",
       "status": "Status",
+      "notes": "Notes"
+    }
+  },
+  "wallets": {
+    "title": "Wallets",
+    "subtitle": "Cash drawers, mobile-money lines and bank accounts — where the business actually holds money.",
+    "new": "New wallet",
+    "newModal": "New wallet",
+    "editModal": "Edit wallet",
+    "searchPlaceholder": "Search wallets…",
+    "emptyTitle": "No wallets yet",
+    "emptyDescription": "Add a cash drawer, a mobile-money line or a bank account to track your holdings.",
+    "created": "Wallet created.",
+    "updated": "Wallet updated.",
+    "deposited": "Deposit recorded.",
+    "withdrew": "Withdrawal recorded.",
+    "transferred": "Transfer recorded.",
+    "deleteTitle": "Delete wallet?",
+    "deleteMessage": "Permanently remove \"{{name}}\" and its entries?",
+    "accountTypes": {
+      "cash": "Cash",
+      "mobile_money": "Mobile money",
+      "bank": "Bank account",
+      "card": "Card",
+      "other": "Other"
+    },
+    "totals": {
+      "holdings": "Total holdings",
+      "activeAccounts": "Active accounts",
+      "totalAccounts": "All accounts"
+    },
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "opening": "Opening",
+      "balance": "Balance",
+      "status": "Status"
+    },
+    "actions": {
+      "deposit": "Deposit",
+      "withdraw": "Withdraw",
+      "transfer": "Transfer",
+      "history": "History"
+    },
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Front-counter drawer, MTN MoMo…",
+      "accountType": "Account type",
+      "openingBalance": "Opening balance",
+      "openingLocked": "edits don't restate past entries",
+      "institution": "Bank / provider",
+      "institutionPlaceholder": "e.g. Bank of Kigali, MTN",
+      "accountNumber": "Account number / phone",
+      "accountNumberPlaceholder": "e.g. ****1234",
+      "isActive": "Active",
+      "notes": "Notes"
+    },
+    "movement": {
+      "depositTitle": "Deposit into {{name}}",
+      "withdrawTitle": "Withdraw from {{name}}",
+      "amount": "Amount",
+      "date": "Date",
+      "description": "Description",
+      "reference": "Reference"
+    },
+    "transfer": {
+      "title": "Transfer from {{name}}",
+      "destination": "To wallet",
+      "submit": "Transfer",
+      "noTargets": "No other active wallet to transfer to. Add one first."
+    },
+    "history": {
+      "title": "{{name}} — history",
+      "empty": "No entries yet.",
+      "date": "Date",
+      "type": "Type",
+      "description": "Description",
+      "amount": "Amount"
+    },
+    "exportCols": {
+      "name": "Name",
+      "type": "Type",
+      "institution": "Institution",
+      "accountNumber": "Account number",
+      "opening": "Opening balance",
+      "balance": "Current balance",
+      "active": "Active",
       "notes": "Notes"
     }
   },

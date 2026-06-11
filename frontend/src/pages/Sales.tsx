@@ -4,7 +4,7 @@ import { ShoppingBag, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
-import { catalog, sales } from '@/api/endpoints';
+import { catalog, finance, sales } from '@/api/endpoints';
 import { extractErrorMessage } from '@/api/client';
 import { useCrudList } from '@/hooks/useCrudList';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -21,6 +21,13 @@ import type { Product, Sale } from '@/api/types';
 
 interface CartLine { product: Product; quantity: number; unit_price: number; }
 
+/** Current local time formatted for a <input type="datetime-local"> value. */
+function nowLocalInput(): string {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
 export function SalesPage() {
   const qc = useQueryClient();
   const { t } = useTranslation();
@@ -32,6 +39,7 @@ export function SalesPage() {
   const products = useQuery({ queryKey: ['products-active'], queryFn: () => catalog.products.list({ page_size: 500, is_active: true }) });
   const paymentMethods = useQuery({ queryKey: ['pay-methods'], queryFn: sales.paymentMethods });
   const channels = useQuery({ queryKey: ['sale-channels'], queryFn: sales.channels });
+  const wallets = useQuery({ queryKey: ['wallets-for-sales'], queryFn: () => finance.wallets.list({ page_size: 200, is_active: true }) });
 
   const [open, setOpen] = useState(false);
   const [viewing, setViewing] = useState<Sale | null>(null);
@@ -40,11 +48,13 @@ export function SalesPage() {
   // Cart state
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [walletId, setWalletId] = useState('');
   const [channel, setChannel] = useState('counter');
   const [discount, setDiscount] = useState('0');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [occurredAt, setOccurredAt] = useState(nowLocalInput());
   const [addProductId, setAddProductId] = useState('');
 
   const total = useMemo(() => {
@@ -61,13 +71,20 @@ export function SalesPage() {
       customer_name: customerName,
       customer_phone: customerPhone,
       notes,
+      occurred_at: occurredAt ? new Date(occurredAt).toISOString() : undefined,
+      // Credit sales bring no cash in yet, so they aren't tied to a wallet.
+      wallet: paymentMethod === 'credit' ? null : (walletId || null),
     }),
     onSuccess: (sale) => {
       toast.success(t('sales.recorded', { number: sale.receipt_number }));
       qc.invalidateQueries({ queryKey: ['sales'] });
       qc.invalidateQueries({ queryKey: ['stock'] });
+      qc.invalidateQueries({ queryKey: ['wallets'] });
+      qc.invalidateQueries({ queryKey: ['wallets-all'] });
       setOpen(false);
       setCart([]); setDiscount('0'); setCustomerName(''); setCustomerPhone(''); setNotes('');
+      setWalletId('');
+      setOccurredAt(nowLocalInput());
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
@@ -136,7 +153,7 @@ export function SalesPage() {
                 list.search ? { search: list.search } : {},
               )}
             />
-            <button onClick={() => setOpen(true)} className="btn-primary"><Plus size={16} /> {t('sales.new')}</button>
+            <button onClick={() => { setOccurredAt(nowLocalInput()); setOpen(true); }} className="btn-primary"><Plus size={16} /> {t('sales.new')}</button>
           </>
         }
       />
@@ -243,6 +260,26 @@ export function SalesPage() {
               </select>
             </div>
             <div>
+              <label className="label">
+                {t('sales.fields.wallet')}{' '}
+                <span className="text-slate-400">({t('common.optional')})</span>
+              </label>
+              <select
+                className="input"
+                value={walletId}
+                disabled={paymentMethod === 'credit'}
+                onChange={(e) => setWalletId(e.target.value)}
+              >
+                <option value="">{t('sales.fields.walletNone')}</option>
+                {wallets.data?.results.map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </select>
+              {paymentMethod === 'credit' && (
+                <p className="mt-1 text-xs text-slate-500">{t('sales.fields.walletCreditHint')}</p>
+              )}
+            </div>
+            <div>
               <label className="label">{t('sales.fields.channel')}</label>
               <select className="input" value={channel} onChange={(e) => setChannel(e.target.value)}>
                 {channels.data?.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -251,6 +288,11 @@ export function SalesPage() {
             <div>
               <label className="label">{t('sales.fields.discount')}</label>
               <input type="number" step="0.01" className="input" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">{t('sales.fields.occurredAt')}</label>
+              <input type="datetime-local" className="input" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} />
+              <p className="mt-1 text-xs text-slate-500">{t('sales.fields.occurredAtHint')}</p>
             </div>
             <div>
               <label className="label">{t('sales.fields.customerName')}</label>

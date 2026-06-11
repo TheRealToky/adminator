@@ -52,9 +52,13 @@ def execute_production(
     if status != ProductionStatus.COMPLETED:
         return run  # No stock movement until actually completed.
 
-    # Consume raw materials per recipe.
+    # A product's recipe can be raw materials, processed materials, or a mix.
+    # Processed-material stock is drawn down by a post-save signal in the
+    # processed_materials app, but we still need their cost here — and must not
+    # reject a processed-only recipe as if it had no recipe at all.
     recipe_items = product.recipe_items.select_related("raw_material").all()
-    if not recipe_items:
+    processed_usages = product.processed_usages.select_related("processed_material").all()
+    if not recipe_items and not processed_usages:
         raise ValueError(
             f"Product '{product.name}' has no recipe — cannot execute production."
         )
@@ -72,6 +76,13 @@ def execute_production(
             user=user,
         )
         total_cost += needed * Decimal(item.raw_material.unit_cost)
+
+    # Processed materials: consumption happens in the signal; add their cost so
+    # the run's recorded cost reflects the full bill of materials.
+    for usage in processed_usages:
+        total_cost += (
+            Decimal(usage.quantity) * quantity * Decimal(usage.processed_material.unit_cost)
+        )
 
     # Add finished product to stock.
     product_stock = inventory_services.ensure_stock_item(product=product)

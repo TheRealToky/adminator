@@ -137,6 +137,22 @@ export const finance = {
         dispose: (id) => api.post(`/finance/assets/${id}/dispose/`).then((r) => r.data),
         reactivate: (id) => api.post(`/finance/assets/${id}/reactivate/`).then((r) => r.data),
     },
+    wallets: {
+        accountTypes: () => api.get('/finance/wallets/account-types/').then((r) => r.data),
+        list: (params = {}) => api.get('/finance/wallets/', { params }).then((r) => r.data),
+        get: (id) => api.get(`/finance/wallets/${id}/`).then((r) => r.data),
+        create: (data) => api.post('/finance/wallets/', data).then((r) => r.data),
+        update: (id, data) => api.patch(`/finance/wallets/${id}/`, data).then((r) => r.data),
+        remove: (id) => api.delete(`/finance/wallets/${id}/`),
+        deposit: (id, data) => api.post(`/finance/wallets/${id}/deposit/`, data).then((r) => r.data),
+        withdraw: (id, data) => api.post(`/finance/wallets/${id}/withdraw/`, data).then((r) => r.data),
+        transfer: (id, data) => api.post(`/finance/wallets/${id}/transfer/`, data).then((r) => r.data),
+        entries: (id, params = {}) => api.get(`/finance/wallets/${id}/entries/`, { params }).then((r) => r.data),
+        ledger: (id) => api.get(`/finance/wallets/${id}/ledger/`).then((r) => r.data),
+    },
+    walletEntries: {
+        list: (params = {}) => api.get('/finance/wallet-entries/', { params }).then((r) => r.data),
+    },
 };
 // ── Analytics ─────────────────────────────────────────────────────────────
 export const analytics = {

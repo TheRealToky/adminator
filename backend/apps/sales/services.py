@@ -36,6 +36,7 @@ def create_sale(
     notes: str = "",
     occurred_at: datetime | None = None,
     user: "User | None" = None,
+    wallet=None,
     allow_negative_stock: bool = False,
 ) -> Sale:
     """Create a Sale with its items, atomically decrementing stock for each product.
@@ -58,6 +59,7 @@ def create_sale(
         customer_phone=customer_phone,
         notes=notes,
         served_by=user,
+        wallet=wallet,
     )
 
     subtotal = Decimal("0")

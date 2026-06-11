@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Boxes, AlertTriangle, History, Sliders, ChefHat, Trash2 } from 'lucide-react';
+import { Boxes, AlertTriangle, History, Sliders, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Trans, useTranslation } from 'react-i18next';
 
@@ -20,7 +20,17 @@ import { formatQuantity, formatMoney, formatDateTime } from '@/lib/format';
 import type { StockItem, StockMovement } from '@/api/types';
 import type { ProcessedMaterialStock } from '@/api/processed-materials';
 
-type Tab = 'all' | 'low' | 'movements' | 'processed';
+type Tab = 'all' | 'low' | 'movements';
+
+/**
+ * A single on-hand row across every inventory source. Products and raw
+ * materials come from `inventory.stock` (already carrying `kind`); processed
+ * materials are tagged with `kind: 'processed'` so the three load together.
+ */
+type UnifiedStock = StockItem | (ProcessedMaterialStock & { kind: 'processed' });
+
+/** Type filter for the combined stock list. `all` shows every kind. */
+type KindFilter = 'all' | 'product' | 'raw_material' | 'processed';
 
 export function InventoryPage() {
   const { t } = useTranslation();
@@ -32,7 +42,6 @@ export function InventoryPage() {
   const tabs: { key: Tab; label: string; icon: typeof Boxes }[] = [
     { key: 'all', label: t('inventory.tabs.all'), icon: Boxes },
     { key: 'low', label: t('inventory.tabs.low'), icon: AlertTriangle },
-    { key: 'processed', label: t('inventory.tabs.processed'), icon: ChefHat },
     { key: 'movements', label: t('inventory.tabs.movements'), icon: History },
   ];
 
@@ -57,9 +66,21 @@ export function InventoryPage() {
           </div>
         </div>
 
-        {tab === 'all' && <AllStockTab onAdjust={setAdjustOpen} onWriteOff={setWriteOffOpen} />}
-        {tab === 'low' && <LowStockTab onAdjust={setAdjustOpen} onWriteOff={setWriteOffOpen} />}
-        {tab === 'processed' && <ProcessedStockTab onWriteOff={setPmWriteOffOpen} />}
+        {tab === 'all' && (
+          <CombinedStockTab
+            onAdjust={setAdjustOpen}
+            onWriteOff={setWriteOffOpen}
+            onPmWriteOff={setPmWriteOffOpen}
+          />
+        )}
+        {tab === 'low' && (
+          <CombinedStockTab
+            lowOnly
+            onAdjust={setAdjustOpen}
+            onWriteOff={setWriteOffOpen}
+            onPmWriteOff={setPmWriteOffOpen}
+          />
+        )}
         {tab === 'movements' && <MovementsTab />}
       </div>
 
@@ -74,10 +95,34 @@ export function InventoryPage() {
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 25;
+
+function tagProcessed(
+  rows: ProcessedMaterialStock[],
+): (ProcessedMaterialStock & { kind: 'processed' })[] {
+  return rows.map((r) => ({ ...r, kind: 'processed' as const }));
+}
+
+/** Fetch products, raw materials, and processed materials and merge them. */
+async function fetchCombinedStock(lowOnly: boolean): Promise<UnifiedStock[]> {
+  const [stock, processed] = await Promise.all([
+    lowOnly
+      ? inventory.stock.low().then((r) => r.results)
+      : fetchAllPaginated((p) => inventory.stock.list(p)),
+    lowOnly
+      ? processedMaterials.stock.low().then((r) => r.results)
+      : fetchAllPaginated((p) => processedMaterials.stock.list(p)),
+  ]);
+  const rows: UnifiedStock[] = [...stock, ...tagProcessed(processed)];
+  rows.sort((a, b) => a.item_name.localeCompare(b.item_name));
+  return rows;
+}
+
 function useStockColumns(
   onAdjust: (s: StockItem) => void,
   onWriteOff: (s: StockItem) => void,
-): Column<StockItem>[] {
+  onPmWriteOff: (s: ProcessedMaterialStock) => void,
+): Column<UnifiedStock>[] {
   const { t } = useTranslation();
   return [
     { key: 'name', header: t('inventory.columns.item'), render: (r) => (
@@ -89,7 +134,9 @@ function useStockColumns(
     { key: 'kind', header: t('inventory.columns.type'), render: (r) =>
       r.kind === 'product'
         ? <span className="badge-blue">{t('inventory.badges.product')}</span>
-        : <span className="badge-gray">{t('inventory.badges.material')}</span>
+        : r.kind === 'processed'
+          ? <span className="badge-yellow">{t('inventory.badges.processed')}</span>
+          : <span className="badge-gray">{t('inventory.badges.material')}</span>
     },
     { key: 'qty', header: t('inventory.columns.onHand'), align: 'right', render: (r) => (
       <span className={r.is_low ? 'text-red-600 font-semibold' : 'font-medium'}>
@@ -104,17 +151,19 @@ function useStockColumns(
     },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
-        <button
-          className="btn-secondary px-2 py-1 text-xs"
-          onClick={() => onAdjust(r)}
-        >
-          <Sliders size={12} /> {t('inventory.actions.adjust')}
-        </button>
+        {r.kind !== 'processed' && (
+          <button
+            className="btn-secondary px-2 py-1 text-xs"
+            onClick={() => onAdjust(r)}
+          >
+            <Sliders size={12} /> {t('inventory.actions.adjust')}
+          </button>
+        )}
         <button
           className="btn-ghost px-2 py-1 text-xs text-red-600"
           title={t('inventory.actions.writeOff')}
           disabled={Number(r.quantity) <= 0}
-          onClick={() => onWriteOff(r)}
+          onClick={() => (r.kind === 'processed' ? onPmWriteOff(r) : onWriteOff(r))}
         >
           <Trash2 size={12} /> {t('inventory.actions.writeOff')}
         </button>
@@ -123,7 +172,7 @@ function useStockColumns(
   ];
 }
 
-function useStockExportColumns(): ExportColumn<StockItem>[] {
+function useStockExportColumns(): ExportColumn<UnifiedStock>[] {
   const { t } = useTranslation();
   return [
     { key: 'item_sku', header: t('inventory.exportCols.sku'), value: (r) => r.item_sku },
@@ -136,75 +185,97 @@ function useStockExportColumns(): ExportColumn<StockItem>[] {
   ];
 }
 
-function AllStockTab({
+function CombinedStockTab({
+  lowOnly = false,
   onAdjust,
   onWriteOff,
+  onPmWriteOff,
 }: {
+  lowOnly?: boolean;
   onAdjust: (s: StockItem) => void;
   onWriteOff: (s: StockItem) => void;
+  onPmWriteOff: (s: ProcessedMaterialStock) => void;
 }) {
   const { t } = useTranslation();
-  const list = useCrudList<StockItem>({
-    queryKey: ['stock'],
-    fetcher: (p) => inventory.stock.list(p),
-  });
-  const columns = useStockColumns(onAdjust, onWriteOff);
-  const exportColumns = useStockExportColumns();
-  return (
-    <>
-      <div className="px-5 pt-3 flex items-center justify-between gap-2">
-        <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('inventory.search.all')} />
-        <ExportMenu
-          filename="stock"
-          columns={exportColumns}
-          fetchRows={() => fetchAllPaginated(
-            (p) => inventory.stock.list(p),
-            list.search ? { search: list.search } : {},
-          )}
-        />
-      </div>
-      <DataTable
-        columns={columns}
-        data={list.data?.results}
-        loading={list.isLoading}
-        rowKey={(r) => r.id}
-        empty={<EmptyState icon={Boxes} title={t('inventory.empty.stock')} description={t('inventory.empty.stockDescription')} />}
-      />
-      {list.data && <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />}
-    </>
-  );
-}
+  const [search, setSearch] = useState('');
+  const [kind, setKind] = useState<KindFilter>('all');
+  const [page, setPage] = useState(1);
 
-function LowStockTab({
-  onAdjust,
-  onWriteOff,
-}: {
-  onAdjust: (s: StockItem) => void;
-  onWriteOff: (s: StockItem) => void;
-}) {
-  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
-    queryKey: ['stock-low'],
-    queryFn: () => inventory.stock.low(),
+    queryKey: lowOnly ? ['stock-combined', 'low'] : ['stock-combined', 'all'],
+    queryFn: () => fetchCombinedStock(lowOnly),
   });
-  const columns = useStockColumns(onAdjust, onWriteOff);
+
+  const columns = useStockColumns(onAdjust, onWriteOff, onPmWriteOff);
   const exportColumns = useStockExportColumns();
+
+  const kindFilters: { key: KindFilter; label: string }[] = [
+    { key: 'all', label: t('inventory.filter.all') },
+    { key: 'product', label: t('inventory.filter.products') },
+    { key: 'raw_material', label: t('inventory.filter.materials') },
+    { key: 'processed', label: t('inventory.filter.processed') },
+  ];
+
+  const filtered = useMemo(() => {
+    let rows = data ?? [];
+    if (kind !== 'all') rows = rows.filter((r) => r.kind === kind);
+    const q = search.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter(
+        (r) => r.item_name.toLowerCase().includes(q) || r.item_sku.toLowerCase().includes(q),
+      );
+    }
+    return rows;
+  }, [data, search, kind]);
+
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
+
+  const empty = lowOnly
+    ? <EmptyState icon={AlertTriangle} title={t('inventory.empty.low')} description={t('inventory.empty.lowDescription')} />
+    : <EmptyState icon={Boxes} title={t('inventory.empty.stock')} description={t('inventory.empty.stockDescription')} />;
+
   return (
     <>
-      <div className="px-5 pt-3 flex items-center justify-end">
+      <div className="px-5 pt-3 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <SearchBar
+            value={search}
+            onChange={(v) => { setSearch(v); setPage(1); }}
+            placeholder={t('inventory.search.all')}
+          />
+          <div className="flex gap-1">
+            {kindFilters.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => { setKind(key); setPage(1); }}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium ${
+                  kind === key ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <ExportMenu
-          filename="low-stock"
+          filename={lowOnly ? 'low-stock' : 'stock'}
           columns={exportColumns}
-          fetchRows={async () => (await inventory.stock.low()).results}
+          fetchRows={async () => filtered}
         />
       </div>
       <DataTable
         columns={columns}
-        data={data?.results}
+        data={isLoading ? undefined : pageRows}
         loading={isLoading}
-        rowKey={(r) => r.id}
-        empty={<EmptyState icon={AlertTriangle} title={t('inventory.empty.low')} description={t('inventory.empty.lowDescription')} />}
+        rowKey={(r) => `${r.kind}-${r.id}`}
+        empty={empty}
       />
+      {filtered.length > 0 && (
+        <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />
+      )}
     </>
   );
 }
@@ -277,6 +348,7 @@ function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () 
     onSuccess: () => {
       toast.success(t('inventory.adjust.recorded'));
       qc.invalidateQueries({ queryKey: ['stock'] });
+      qc.invalidateQueries({ queryKey: ['stock-combined'] });
       qc.invalidateQueries({ queryKey: ['movements'] });
       qc.invalidateQueries({ queryKey: ['stock-low'] });
       onClose(); setDelta(''); setNote('');
@@ -364,6 +436,7 @@ function WriteOffModal({ stock, onClose }: { stock: StockItem | null; onClose: (
             }),
       );
       qc.invalidateQueries({ queryKey: ['stock'] });
+      qc.invalidateQueries({ queryKey: ['stock-combined'] });
       qc.invalidateQueries({ queryKey: ['stock-low'] });
       qc.invalidateQueries({ queryKey: ['movements'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
@@ -496,6 +569,7 @@ function ProcessedWriteOffModal({
             }),
       );
       qc.invalidateQueries({ queryKey: ['processed-stock'] });
+      qc.invalidateQueries({ queryKey: ['stock-combined'] });
       qc.invalidateQueries({ queryKey: ['processed-materials'] });
       qc.invalidateQueries({ queryKey: ['processed-movements'] });
       qc.invalidateQueries({ queryKey: ['expenses'] });
@@ -593,89 +667,5 @@ function ProcessedWriteOffModal({
         </div>
       </div>
     </Modal>
-  );
-}
-
-// ── Processed materials stock tab ─────────────────────────────────────────
-function ProcessedStockTab({
-  onWriteOff,
-}: {
-  onWriteOff: (s: ProcessedMaterialStock) => void;
-}) {
-  const { t } = useTranslation();
-  const list = useCrudList<ProcessedMaterialStock>({
-    queryKey: ['processed-stock'],
-    fetcher: (p) => processedMaterials.stock.list(p),
-  });
-  const columns: Column<ProcessedMaterialStock>[] = [
-    { key: 'name', header: t('inventory.columns.item'), render: (r) => (
-      <div>
-        <p className="font-medium">{r.item_name}</p>
-        <p className="text-xs text-slate-500 font-mono">{r.item_sku}</p>
-      </div>
-    )},
-    { key: 'kind', header: t('inventory.columns.type'), render: () => (
-      <span className="badge-yellow">{t('inventory.badges.processed')}</span>
-    )},
-    { key: 'qty', header: t('inventory.columns.onHand'), align: 'right', render: (r) => (
-      <span className={r.is_low ? 'text-red-600 font-semibold' : 'font-medium'}>
-        {formatQuantity(r.quantity)} {r.item_unit}
-      </span>
-    )},
-    { key: 'thresh', header: t('inventory.columns.reorder'), align: 'right', render: (r) => (
-      formatQuantity(r.reorder_threshold)
-    )},
-    { key: 'status', header: t('inventory.columns.status'), render: (r) => (
-      r.is_low
-        ? <span className="badge-red">{t('inventory.badges.low')}</span>
-        : <span className="badge-green">{t('inventory.badges.ok')}</span>
-    )},
-    { key: 'actions', header: '', align: 'right', render: (r) => (
-      <button
-        className="btn-ghost px-2 py-1 text-xs text-red-600"
-        title={t('inventory.actions.writeOff')}
-        disabled={Number(r.quantity) <= 0}
-        onClick={() => onWriteOff(r)}
-      >
-        <Trash2 size={12} /> {t('inventory.actions.writeOff')}
-      </button>
-    )},
-  ];
-  const exportColumns: ExportColumn<ProcessedMaterialStock>[] = [
-    { key: 'item_sku', header: t('inventory.exportCols.sku'), value: (r) => r.item_sku },
-    { key: 'item_name', header: t('inventory.exportCols.item'), value: (r) => r.item_name },
-    { key: 'item_unit', header: t('inventory.exportCols.unit'), value: (r) => r.item_unit },
-    { key: 'quantity', header: t('inventory.exportCols.onHand'), value: (r) => Number(r.quantity) },
-    { key: 'reorder_threshold', header: t('inventory.exportCols.reorderThreshold'), value: (r) => Number(r.reorder_threshold) },
-    { key: 'is_low', header: t('inventory.exportCols.lowStock'), value: (r) => (r.is_low ? t('common.yes') : t('common.no')) },
-  ];
-  return (
-    <>
-      <div className="px-5 pt-3 flex items-center justify-between gap-2">
-        <SearchBar value={list.search} onChange={list.setSearch} placeholder={t('inventory.search.processed')} />
-        <ExportMenu
-          filename="processed-stock"
-          columns={exportColumns}
-          fetchRows={() => fetchAllPaginated(
-            (p) => processedMaterials.stock.list(p),
-            list.search ? { search: list.search } : {},
-          )}
-        />
-      </div>
-      <DataTable
-        columns={columns}
-        data={list.data?.results}
-        loading={list.isLoading}
-        rowKey={(r) => r.id}
-        empty={<EmptyState
-          icon={ChefHat}
-          title={t('inventory.empty.processed')}
-          description={t('inventory.empty.processedDescription')}
-        />}
-      />
-      {list.data && (
-        <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />
-      )}
-    </>
   );
 }

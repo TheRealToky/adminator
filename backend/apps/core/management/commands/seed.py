@@ -26,7 +26,15 @@ from apps.catalog.models import (
     Supplier,
     UnitOfMeasure,
 )
-from apps.finance.models import Budget, Expense, ExpenseCategory, Invoice, InvoiceStatus
+from apps.finance.models import (
+    Budget,
+    Expense,
+    ExpenseCategory,
+    Invoice,
+    InvoiceStatus,
+    Wallet,
+    WalletEntry,
+)
 from apps.inventory import services as inventory_services
 from apps.inventory.models import StockItem, StockMovement
 from apps.production import services as production_services
@@ -179,6 +187,8 @@ class Command(BaseCommand):
                 StockMovement.objects.all().delete()
                 Sale.objects.all().delete()
                 ProductionRun.objects.all().delete()
+                WalletEntry.objects.all().delete()
+                Wallet.objects.all().delete()
                 Expense.objects.all().delete()
                 Invoice.objects.all().delete()
                 Budget.objects.all().delete()
@@ -200,8 +210,10 @@ class Command(BaseCommand):
             self._seed_initial_stock(materials, products, users[0])
             self._seed_expense_categories()
             self._seed_budgets()
+            self._seed_wallets(users[0])
             self._seed_history(products, users)
             self._seed_invoices(users[0])
+            self._link_wallets()
 
         self.stdout.write(self.style.SUCCESS(
             "✓ Seed complete: %d products, %d raw materials, 90 days of history."
@@ -368,6 +380,55 @@ class Command(BaseCommand):
                 month=first_of_month,
                 defaults={"amount": Decimal(amount)},
             )
+
+    def _seed_wallets(self, user) -> None:
+        wallets = [
+            # (name, account_type, opening_balance, institution, account_number)
+            ("Front-counter drawer", "cash", "150000", "", ""),
+            ("MTN Mobile Money", "mobile_money", "420000", "MTN Rwanda", "078*****12"),
+            ("Bank of Kigali — current", "bank", "3200000", "Bank of Kigali", "0001*****789"),
+            ("Card terminal float", "card", "0", "", ""),
+        ]
+        for name, acct_type, opening, institution, number in wallets:
+            wallet, created = Wallet.objects.get_or_create(
+                name=name,
+                defaults={
+                    "account_type": acct_type,
+                    "opening_balance": Decimal(opening),
+                    "institution": institution,
+                    "account_number": number,
+                    "recorded_by": user,
+                },
+            )
+            if not created:
+                continue
+            # A couple of illustrative movements so balances aren't static.
+            WalletEntry.objects.create(
+                wallet=wallet, entry_type="deposit",
+                amount=Decimal(str(RNG.randint(20000, 120000))),
+                description="Cash takings", recorded_by=user,
+            )
+            WalletEntry.objects.create(
+                wallet=wallet, entry_type="withdrawal",
+                amount=Decimal(str(RNG.randint(5000, 40000))),
+                description="Petty cash", recorded_by=user,
+            )
+
+    def _link_wallets(self) -> None:
+        """Tag seeded sales and expenses to a wallet by payment method so the
+        wallet balances reflect real activity. Credit sales stay unassigned."""
+        by_name = {w.name: w for w in Wallet.objects.all()}
+        mapping = {
+            "cash": by_name.get("Front-counter drawer"),
+            "mobile_money": by_name.get("MTN Mobile Money"),
+            "bank_transfer": by_name.get("Bank of Kigali — current"),
+            "card": by_name.get("Card terminal float"),
+        }
+        for pm, wallet in mapping.items():
+            if wallet is None:
+                continue
+            Sale.objects.filter(payment_method=pm, wallet__isnull=True).update(wallet=wallet)
+            Expense.objects.filter(payment_method=pm, wallet__isnull=True).update(wallet=wallet)
 
     def _seed_history(self, products: list, users: list) -> None:
         """90 days of plausible sales, expenses, and production."""

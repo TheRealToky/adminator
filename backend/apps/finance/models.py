@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q, Sum
 from django.utils import timezone
 
 from apps.core.models import BaseModel
@@ -59,6 +60,14 @@ class Expense(BaseModel):
         null=True,
         blank=True,
         related_name="expenses",
+    )
+    wallet = models.ForeignKey(
+        "finance.Wallet",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="expenses",
+        help_text="Wallet the money was paid out of. Drives that wallet's balance.",
     )
 
     class Meta:
@@ -199,6 +208,14 @@ class Transaction(BaseModel):
         null=True,
         blank=True,
         related_name="transactions",
+    )
+    wallet = models.ForeignKey(
+        "finance.Wallet",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+        help_text="Wallet the money moved through. Drives that wallet's balance.",
     )
 
     class Meta:
@@ -352,3 +369,159 @@ class Asset(BaseModel):
         if not self.useful_life_months:
             return False
         return self.months_elapsed >= self.useful_life_months
+
+
+class WalletAccountType(models.TextChoices):
+    CASH = "cash", "Cash"
+    MOBILE_MONEY = "mobile_money", "Mobile Money"
+    BANK = "bank", "Bank Account"
+    CARD = "card", "Card"
+    OTHER = "other", "Other"
+
+
+class Wallet(BaseModel):
+    """A place the business actually holds money — a cash drawer, a mobile-money
+    line, a bank account, etc.
+
+    The running balance is the ``opening_balance`` plus the signed sum of every
+    ledger entry (deposits/transfers-in add, withdrawals/transfers-out subtract).
+    Deliberately simple — no GL, no reconciliation engine, just a register the
+    owner can keep current by hand.
+    """
+
+    name = models.CharField(max_length=120, unique=True)
+    account_type = models.CharField(
+        max_length=16,
+        choices=WalletAccountType.choices,
+        default=WalletAccountType.CASH,
+    )
+    opening_balance = models.DecimalField(
+        max_digits=14, decimal_places=2, default=Decimal("0"),
+        help_text="Balance on the day this wallet started being tracked.",
+    )
+    institution = models.CharField(
+        max_length=120, blank=True,
+        help_text="Bank or provider name, e.g. 'Bank of Kigali', 'MTN MoMo'.",
+    )
+    account_number = models.CharField(
+        max_length=64, blank=True,
+        help_text="Account number or phone line — store masked if sensitive.",
+    )
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wallets",
+    )
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["account_type"]),
+            models.Index(fields=["is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.get_account_type_display()})"
+
+    @property
+    def current_balance(self) -> Decimal:
+        """Opening balance, the manual ledger, and every money flow tagged to
+        this wallet (sales in; expenses out; transactions either way)."""
+        from apps.sales.models import Sale
+
+        z = Decimal("0")
+        entries = self.entries.aggregate(
+            credit=Sum("amount", filter=Q(entry_type__in=CREDIT_ENTRY_TYPES)),
+            debit=Sum("amount", filter=Q(entry_type__in=DEBIT_ENTRY_TYPES)),
+        )
+        sales_in = Sale.objects.filter(wallet=self).aggregate(s=Sum("total"))["s"] or z
+        tx = self.transactions.aggregate(
+            inc=Sum("amount", filter=Q(direction=TransactionDirection.INCOME)),
+            exp=Sum("amount", filter=Q(direction=TransactionDirection.EXPENSE)),
+        )
+        expenses_out = self.expenses.aggregate(e=Sum("amount"))["e"] or z
+
+        total = (
+            self.opening_balance
+            + (entries["credit"] or z)
+            - (entries["debit"] or z)
+            + sales_in
+            + (tx["inc"] or z)
+            - (tx["exp"] or z)
+            - expenses_out
+        )
+        return total.quantize(Decimal("0.01"))
+
+
+class WalletEntryType(models.TextChoices):
+    DEPOSIT = "deposit", "Deposit"
+    WITHDRAWAL = "withdrawal", "Withdrawal"
+    TRANSFER_IN = "transfer_in", "Transfer in"
+    TRANSFER_OUT = "transfer_out", "Transfer out"
+
+
+# Entry types that increase / decrease a wallet's balance.
+CREDIT_ENTRY_TYPES = (WalletEntryType.DEPOSIT, WalletEntryType.TRANSFER_IN)
+DEBIT_ENTRY_TYPES = (WalletEntryType.WITHDRAWAL, WalletEntryType.TRANSFER_OUT)
+
+
+class WalletEntry(BaseModel):
+    """A single money movement against a wallet.
+
+    Deposits and withdrawals are standalone. Transfers create two linked rows —
+    a ``transfer_out`` on the source and a ``transfer_in`` on the destination —
+    sharing a ``transfer_group`` so the pair can be traced (and deleted) together.
+    """
+
+    wallet = models.ForeignKey(
+        Wallet, on_delete=models.CASCADE, related_name="entries"
+    )
+    entry_type = models.CharField(max_length=16, choices=WalletEntryType.choices)
+    amount = models.DecimalField(
+        max_digits=14, decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    occurred_on = models.DateField(default=timezone.localdate)
+    description = models.CharField(max_length=160, blank=True)
+    reference = models.CharField(max_length=80, blank=True)
+    counterparty_wallet = models.ForeignKey(
+        Wallet,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="counterparty_entries",
+        help_text="The other wallet involved, for transfers.",
+    )
+    transfer_group = models.UUIDField(
+        null=True, blank=True, db_index=True,
+        help_text="Shared by the two rows of a single transfer.",
+    )
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wallet_entries",
+    )
+
+    class Meta:
+        ordering = ["-occurred_on", "-created_at"]
+        indexes = [
+            models.Index(fields=["wallet", "-occurred_on"]),
+            models.Index(fields=["entry_type"]),
+        ]
+        verbose_name_plural = "wallet entries"
+
+    def __str__(self) -> str:
+        return f"{self.get_entry_type_display()} {self.amount} · {self.wallet_id}"
+
+    @property
+    def signed_amount(self) -> Decimal:
+        if self.entry_type in DEBIT_ENTRY_TYPES:
+            return -self.amount
+        return self.amount

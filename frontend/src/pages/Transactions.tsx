@@ -67,6 +67,10 @@ function TransactionsTab() {
     queryKey: ['tx-cats-all'],
     queryFn: () => finance.transactionCategories.list({ page_size: 200 }),
   });
+  const wallets = useQuery({
+    queryKey: ['wallets-for-tx'],
+    queryFn: () => finance.wallets.list({ page_size: 200, is_active: true }),
+  });
 
   const emptyForm: Partial<Transaction> = {
     direction: 'expense',
@@ -90,6 +94,8 @@ function TransactionsTab() {
     onSuccess: () => {
       toast.success(editing ? t('transactions.list.updated') : t('transactions.list.created'));
       qc.invalidateQueries({ queryKey: ['transactions'] });
+      qc.invalidateQueries({ queryKey: ['wallets'] });
+      qc.invalidateQueries({ queryKey: ['wallets-all'] });
       setOpen(false);
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
@@ -329,6 +335,22 @@ function TransactionsTab() {
               <option value="mobile_money">{t('transactions.fields.paymentMethods.mobile_money')}</option>
               <option value="card">{t('transactions.fields.paymentMethods.card')}</option>
               <option value="bank_transfer">{t('transactions.fields.paymentMethods.bank_transfer')}</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">
+              {t('transactions.fields.wallet')}{' '}
+              <span className="text-slate-400">({t('common.optional')})</span>
+            </label>
+            <select
+              className="input"
+              value={form.wallet ?? ''}
+              onChange={(e) => setForm({ ...form, wallet: e.target.value || null })}
+            >
+              <option value="">{t('transactions.fields.walletNone')}</option>
+              {wallets.data?.results.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
             </select>
           </div>
           <div className="sm:col-span-2">

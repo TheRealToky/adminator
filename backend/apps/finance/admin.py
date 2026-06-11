@@ -8,6 +8,8 @@ from .models import (
     Invoice,
     Transaction,
     TransactionCategory,
+    Wallet,
+    WalletEntry,
 )
 
 
@@ -66,3 +68,29 @@ class AssetAdmin(admin.ModelAdmin):
     search_fields = ("name", "reference", "notes")
     autocomplete_fields = ("supplier", "recorded_by", "linked_expense")
     readonly_fields = ("months_elapsed", "accumulated_depreciation", "carrying_value")
+
+
+@admin.register(Wallet)
+class WalletAdmin(admin.ModelAdmin):
+    list_display = (
+        "name", "account_type", "opening_balance", "current_balance",
+        "institution", "is_active",
+    )
+    list_filter = ("account_type", "is_active")
+    search_fields = ("name", "institution", "account_number", "notes")
+    readonly_fields = ("current_balance",)
+
+    @admin.display(description="Current balance")
+    def current_balance(self, obj):
+        return obj.current_balance
+
+
+@admin.register(WalletEntry)
+class WalletEntryAdmin(admin.ModelAdmin):
+    list_display = (
+        "wallet", "entry_type", "amount", "occurred_on",
+        "counterparty_wallet", "reference",
+    )
+    list_filter = ("entry_type", "occurred_on")
+    search_fields = ("description", "reference", "notes")
+    autocomplete_fields = ("wallet", "counterparty_wallet", "recorded_by")

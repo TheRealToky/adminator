@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import uuid
 from decimal import Decimal
 
+from django.db import transaction as db_transaction
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -14,6 +16,9 @@ from .models import (
     InvoiceStatus,
     Transaction,
     TransactionCategory,
+    Wallet,
+    WalletEntry,
+    WalletEntryType,
 )
 
 
@@ -29,6 +34,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
     supplier_name = serializers.CharField(source="supplier.name", read_only=True)
     recorded_by_name = serializers.CharField(source="recorded_by.full_name", read_only=True)
+    wallet_name = serializers.CharField(source="wallet.name", read_only=True)
     payment_method_display = serializers.CharField(
         source="get_payment_method_display", read_only=True
     )
@@ -39,12 +45,12 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "id", "category", "category_name", "title", "amount",
             "incurred_on", "payment_method", "payment_method_display",
             "supplier", "supplier_name", "reference", "notes",
-            "recorded_by", "recorded_by_name",
+            "recorded_by", "recorded_by_name", "wallet", "wallet_name",
             "created_at", "updated_at",
         )
         read_only_fields = (
             "id", "category_name", "supplier_name", "recorded_by", "recorded_by_name",
-            "payment_method_display", "created_at", "updated_at",
+            "wallet_name", "payment_method_display", "created_at", "updated_at",
         )
 
     def create(self, validated_data):
@@ -122,6 +128,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         source="get_payment_method_display", read_only=True
     )
     recorded_by_name = serializers.CharField(source="recorded_by.full_name", read_only=True)
+    wallet_name = serializers.CharField(source="wallet.name", read_only=True)
 
     class Meta:
         model = Transaction
@@ -131,13 +138,13 @@ class TransactionSerializer(serializers.ModelSerializer):
             "title", "amount",
             "occurred_on", "payment_method", "payment_method_display",
             "counterparty", "reference", "notes",
-            "recorded_by", "recorded_by_name",
+            "recorded_by", "recorded_by_name", "wallet", "wallet_name",
             "created_at", "updated_at",
         )
         read_only_fields = (
             "id", "direction_display", "category_name", "category_direction",
             "payment_method_display",
-            "recorded_by", "recorded_by_name",
+            "recorded_by", "recorded_by_name", "wallet_name",
             "created_at", "updated_at",
         )
 
@@ -250,3 +257,166 @@ class AssetSerializer(serializers.ModelSerializer):
             validated_data["linked_expense"] = expense
 
         return super().create(validated_data)
+
+
+# ── Wallets ────────────────────────────────────────────────────────────────
+class WalletSerializer(serializers.ModelSerializer):
+    account_type_display = serializers.CharField(
+        source="get_account_type_display", read_only=True
+    )
+    current_balance = serializers.DecimalField(
+        max_digits=14, decimal_places=2, read_only=True
+    )
+    recorded_by_name = serializers.CharField(
+        source="recorded_by.full_name", read_only=True
+    )
+
+    class Meta:
+        model = Wallet
+        fields = (
+            "id", "name", "account_type", "account_type_display",
+            "opening_balance", "current_balance",
+            "institution", "account_number", "is_active", "notes",
+            "recorded_by", "recorded_by_name",
+            "created_at", "updated_at",
+        )
+        read_only_fields = (
+            "id", "account_type_display", "current_balance",
+            "recorded_by", "recorded_by_name", "created_at", "updated_at",
+        )
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            validated_data["recorded_by"] = request.user
+        return super().create(validated_data)
+
+
+class WalletEntrySerializer(serializers.ModelSerializer):
+    entry_type_display = serializers.CharField(
+        source="get_entry_type_display", read_only=True
+    )
+    signed_amount = serializers.DecimalField(
+        max_digits=14, decimal_places=2, read_only=True
+    )
+    wallet_name = serializers.CharField(source="wallet.name", read_only=True)
+    counterparty_wallet_name = serializers.CharField(
+        source="counterparty_wallet.name", read_only=True
+    )
+    recorded_by_name = serializers.CharField(
+        source="recorded_by.full_name", read_only=True
+    )
+
+    class Meta:
+        model = WalletEntry
+        fields = (
+            "id", "wallet", "wallet_name",
+            "entry_type", "entry_type_display",
+            "amount", "signed_amount", "occurred_on",
+            "description", "reference",
+            "counterparty_wallet", "counterparty_wallet_name",
+            "transfer_group",
+            "recorded_by", "recorded_by_name",
+            "created_at", "updated_at",
+        )
+        read_only_fields = fields
+
+
+class WalletMovementSerializer(serializers.Serializer):
+    """Shared input for a deposit or a withdrawal against a single wallet.
+
+    The concrete ``entry_type`` is supplied by the view via ``context``.
+    """
+
+    amount = serializers.DecimalField(
+        max_digits=14, decimal_places=2, min_value=Decimal("0.01")
+    )
+    occurred_on = serializers.DateField(required=False)
+    description = serializers.CharField(
+        max_length=160, required=False, allow_blank=True
+    )
+    reference = serializers.CharField(
+        max_length=80, required=False, allow_blank=True
+    )
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+    def save(self, **kwargs):
+        wallet: Wallet = self.context["wallet"]
+        entry_type: str = self.context["entry_type"]
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else None
+        data = self.validated_data
+        return WalletEntry.objects.create(
+            wallet=wallet,
+            entry_type=entry_type,
+            amount=data["amount"],
+            occurred_on=data.get("occurred_on") or timezone.localdate(),
+            description=data.get("description", ""),
+            reference=data.get("reference", ""),
+            notes=data.get("notes", ""),
+            recorded_by=user,
+        )
+
+
+class WalletTransferSerializer(serializers.Serializer):
+    """Move money from the wallet in context to another wallet."""
+
+    destination = serializers.PrimaryKeyRelatedField(queryset=Wallet.objects.all())
+    amount = serializers.DecimalField(
+        max_digits=14, decimal_places=2, min_value=Decimal("0.01")
+    )
+    occurred_on = serializers.DateField(required=False)
+    description = serializers.CharField(
+        max_length=160, required=False, allow_blank=True
+    )
+    reference = serializers.CharField(
+        max_length=80, required=False, allow_blank=True
+    )
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_destination(self, dest: Wallet) -> Wallet:
+        source: Wallet = self.context["wallet"]
+        if dest.id == source.id:
+            raise serializers.ValidationError("Cannot transfer to the same wallet.")
+        if not dest.is_active:
+            raise serializers.ValidationError("Destination wallet is inactive.")
+        return dest
+
+    @db_transaction.atomic
+    def save(self, **kwargs):
+        source: Wallet = self.context["wallet"]
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else None
+        data = self.validated_data
+        dest: Wallet = data["destination"]
+        group = uuid.uuid4()
+        occurred_on = data.get("occurred_on") or timezone.localdate()
+        description = data.get("description", "")
+        reference = data.get("reference", "")
+        notes = data.get("notes", "")
+
+        out_entry = WalletEntry.objects.create(
+            wallet=source,
+            entry_type=WalletEntryType.TRANSFER_OUT,
+            amount=data["amount"],
+            occurred_on=occurred_on,
+            description=description or f"Transfer to {dest.name}",
+            reference=reference,
+            counterparty_wallet=dest,
+            transfer_group=group,
+            notes=notes,
+            recorded_by=user,
+        )
+        WalletEntry.objects.create(
+            wallet=dest,
+            entry_type=WalletEntryType.TRANSFER_IN,
+            amount=data["amount"],
+            occurred_on=occurred_on,
+            description=description or f"Transfer from {source.name}",
+            reference=reference,
+            counterparty_wallet=source,
+            transfer_group=group,
+            notes=notes,
+            recorded_by=user,
+        )
+        return out_entry

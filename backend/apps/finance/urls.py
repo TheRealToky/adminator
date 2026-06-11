@@ -8,6 +8,8 @@ from .views import (
     InvoiceViewSet,
     TransactionCategoryViewSet,
     TransactionViewSet,
+    WalletEntryViewSet,
+    WalletViewSet,
 )
 
 router = DefaultRouter()
@@ -18,5 +20,7 @@ router.register("budgets", BudgetViewSet, basename="budget")
 router.register("transaction-categories", TransactionCategoryViewSet, basename="transaction-category")
 router.register("transactions", TransactionViewSet, basename="transaction")
 router.register("assets", AssetViewSet, basename="asset")
+router.register("wallets", WalletViewSet, basename="wallet")
+router.register("wallet-entries", WalletEntryViewSet, basename="wallet-entry")
 
 urlpatterns = router.urls

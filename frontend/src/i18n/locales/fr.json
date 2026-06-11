@@ -70,6 +70,7 @@
     "processedMaterials": "Matières transformées",
     "rawMaterials": "Matières premières",
     "suppliers": "Fournisseurs",
+    "wallets": "Portefeuilles",
     "transactions": "Transactions",
     "invoices": "Factures",
     "budgets": "Budgets",
@@ -333,6 +334,12 @@
       "all": "Rechercher des articles…",
       "processed": "Rechercher des matières transformées…"
     },
+    "filter": {
+      "all": "Tous les types",
+      "products": "Produits",
+      "materials": "Matières premières",
+      "processed": "Transformées"
+    },
     "columns": {
       "item": "Article",
       "type": "Type",
@@ -463,8 +470,13 @@
     },
     "fields": {
       "paymentMethod": "Mode de paiement",
+      "wallet": "Portefeuille",
+      "walletNone": "Ne pas suivre dans un portefeuille",
+      "walletCreditHint": "Les ventes à crédit ne sont liées à un portefeuille qu'une fois payées.",
       "channel": "Canal",
       "discount": "Remise",
+      "occurredAt": "Date et heure",
+      "occurredAtHint": "Laisser vide pour utiliser l'heure actuelle",
       "customerName": "Nom du client (optionnel)",
       "customerPhone": "Téléphone client (optionnel)",
       "notes": "Notes"
@@ -579,6 +591,8 @@
         "card": "Carte",
         "bank_transfer": "Virement bancaire"
       },
+      "wallet": "Portefeuille",
+      "walletNone": "Ne pas suivre dans un portefeuille",
       "customerOptional": "Client (optionnel)",
       "supplierOptional": "Fournisseur (optionnel)",
       "reference": "Référence / n° de reçu",
@@ -776,6 +790,93 @@
       "supplier": "Fournisseur",
       "reference": "Référence",
       "status": "Statut",
+      "notes": "Notes"
+    }
+  },
+  "wallets": {
+    "title": "Portefeuilles",
+    "subtitle": "Caisses, comptes mobile money et comptes bancaires — là où l'entreprise détient réellement son argent.",
+    "new": "Nouveau portefeuille",
+    "newModal": "Nouveau portefeuille",
+    "editModal": "Modifier le portefeuille",
+    "searchPlaceholder": "Rechercher des portefeuilles…",
+    "emptyTitle": "Aucun portefeuille",
+    "emptyDescription": "Ajoutez une caisse, un compte mobile money ou un compte bancaire pour suivre vos avoirs.",
+    "created": "Portefeuille créé.",
+    "updated": "Portefeuille mis à jour.",
+    "deposited": "Dépôt enregistré.",
+    "withdrew": "Retrait enregistré.",
+    "transferred": "Transfert enregistré.",
+    "deleteTitle": "Supprimer le portefeuille ?",
+    "deleteMessage": "Supprimer définitivement « {{name}} » et ses écritures ?",
+    "accountTypes": {
+      "cash": "Espèces",
+      "mobile_money": "Mobile money",
+      "bank": "Compte bancaire",
+      "card": "Carte",
+      "other": "Autre"
+    },
+    "totals": {
+      "holdings": "Avoirs totaux",
+      "activeAccounts": "Comptes actifs",
+      "totalAccounts": "Tous les comptes"
+    },
+    "columns": {
+      "name": "Nom",
+      "type": "Type",
+      "opening": "Initial",
+      "balance": "Solde",
+      "status": "Statut"
+    },
+    "actions": {
+      "deposit": "Dépôt",
+      "withdraw": "Retrait",
+      "transfer": "Transfert",
+      "history": "Historique"
+    },
+    "fields": {
+      "name": "Nom",
+      "namePlaceholder": "ex. Caisse comptoir, MTN MoMo…",
+      "accountType": "Type de compte",
+      "openingBalance": "Solde initial",
+      "openingLocked": "les modifications ne recalculent pas les écritures passées",
+      "institution": "Banque / opérateur",
+      "institutionPlaceholder": "ex. Bank of Kigali, MTN",
+      "accountNumber": "Numéro de compte / téléphone",
+      "accountNumberPlaceholder": "ex. ****1234",
+      "isActive": "Actif",
+      "notes": "Notes"
+    },
+    "movement": {
+      "depositTitle": "Dépôt sur {{name}}",
+      "withdrawTitle": "Retrait de {{name}}",
+      "amount": "Montant",
+      "date": "Date",
+      "description": "Description",
+      "reference": "Référence"
+    },
+    "transfer": {
+      "title": "Transfert depuis {{name}}",
+      "destination": "Vers le portefeuille",
+      "submit": "Transférer",
+      "noTargets": "Aucun autre portefeuille actif vers lequel transférer. Ajoutez-en un d'abord."
+    },
+    "history": {
+      "title": "{{name}} — historique",
+      "empty": "Aucune écriture.",
+      "date": "Date",
+      "type": "Type",
+      "description": "Description",
+      "amount": "Montant"
+    },
+    "exportCols": {
+      "name": "Nom",
+      "type": "Type",
+      "institution": "Établissement",
+      "accountNumber": "Numéro de compte",
+      "opening": "Solde initial",
+      "balance": "Solde actuel",
+      "active": "Actif",
       "notes": "Notes"
     }
   },

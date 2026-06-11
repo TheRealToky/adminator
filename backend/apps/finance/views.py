@@ -18,6 +18,10 @@ from .models import (
     InvoiceStatus,
     Transaction,
     TransactionCategory,
+    Wallet,
+    WalletAccountType,
+    WalletEntry,
+    WalletEntryType,
 )
 from .serializers import (
     AssetSerializer,
@@ -28,6 +32,10 @@ from .serializers import (
     InvoiceSerializer,
     TransactionCategorySerializer,
     TransactionSerializer,
+    WalletEntrySerializer,
+    WalletMovementSerializer,
+    WalletSerializer,
+    WalletTransferSerializer,
 )
 
 
@@ -141,3 +149,150 @@ class AssetViewSet(viewsets.ModelViewSet):
         asset.status = "active"
         asset.save(update_fields=["status", "updated_at"])
         return Response(AssetSerializer(asset).data)
+
+
+def build_wallet_ledger(wallet, limit: int = 100) -> list[dict]:
+    """Merge a wallet's manual entries and its linked money flows into one
+    chronological list. Each item is normalised to a common shape with an
+    explicit ``direction`` ('in' or 'out')."""
+    from apps.sales.models import Sale
+
+    from .models import CREDIT_ENTRY_TYPES, TransactionDirection
+
+    items: list[dict] = []
+
+    for e in wallet.entries.select_related("counterparty_wallet")[:limit]:
+        items.append({
+            "source": "manual",
+            "id": str(e.id),
+            "kind": e.entry_type,
+            "kind_display": e.get_entry_type_display(),
+            "occurred_on": e.occurred_on.isoformat(),
+            "description": e.description or (
+                e.counterparty_wallet.name if e.counterparty_wallet else ""
+            ),
+            "amount": str(e.amount),
+            "direction": "in" if e.entry_type in CREDIT_ENTRY_TYPES else "out",
+            "created_at": e.created_at.isoformat(),
+        })
+
+    for s in Sale.objects.filter(wallet=wallet).order_by("-occurred_at")[:limit]:
+        items.append({
+            "source": "sale",
+            "id": str(s.id),
+            "kind": "sale",
+            "kind_display": "Sale",
+            "occurred_on": s.occurred_at.date().isoformat(),
+            "description": s.receipt_number + (
+                f" · {s.customer_name}" if s.customer_name else ""
+            ),
+            "amount": str(s.total),
+            "direction": "in",
+            "created_at": s.created_at.isoformat(),
+        })
+
+    for t in wallet.transactions.all()[:limit]:
+        is_income = t.direction == TransactionDirection.INCOME
+        items.append({
+            "source": "transaction",
+            "id": str(t.id),
+            "kind": t.direction,
+            "kind_display": t.get_direction_display(),
+            "occurred_on": t.occurred_on.isoformat(),
+            "description": t.title,
+            "amount": str(t.amount),
+            "direction": "in" if is_income else "out",
+            "created_at": t.created_at.isoformat(),
+        })
+
+    for x in wallet.expenses.all()[:limit]:
+        items.append({
+            "source": "expense",
+            "id": str(x.id),
+            "kind": "expense",
+            "kind_display": "Expense",
+            "occurred_on": x.incurred_on.isoformat(),
+            "description": x.title,
+            "amount": str(x.amount),
+            "direction": "out",
+            "created_at": x.created_at.isoformat(),
+        })
+
+    items.sort(key=lambda i: (i["occurred_on"], i["created_at"]), reverse=True)
+    return items[:limit]
+
+
+class WalletViewSet(viewsets.ModelViewSet):
+    queryset = Wallet.objects.select_related("recorded_by").all()
+    serializer_class = WalletSerializer
+    permission_classes = [ReadOnlyOrManager]
+    filterset_fields = ["account_type", "is_active"]
+    search_fields = ["name", "institution", "account_number", "notes"]
+    ordering_fields = ["name", "account_type", "opening_balance", "created_at"]
+
+    @action(detail=False, methods=["get"], url_path="account-types")
+    def account_types(self, request):
+        return Response(
+            [{"value": v, "label": label} for v, label in WalletAccountType.choices]
+        )
+
+    def _record_movement(self, request, entry_type):
+        wallet = self.get_object()
+        serializer = WalletMovementSerializer(
+            data=request.data,
+            context={"wallet": wallet, "entry_type": entry_type, "request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(WalletSerializer(wallet).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def deposit(self, request, pk=None):
+        return self._record_movement(request, WalletEntryType.DEPOSIT)
+
+    @action(detail=True, methods=["post"])
+    def withdraw(self, request, pk=None):
+        return self._record_movement(request, WalletEntryType.WITHDRAWAL)
+
+    @action(detail=True, methods=["post"])
+    def transfer(self, request, pk=None):
+        wallet = self.get_object()
+        serializer = WalletTransferSerializer(
+            data=request.data, context={"wallet": wallet, "request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(WalletSerializer(wallet).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"])
+    def entries(self, request, pk=None):
+        wallet = self.get_object()
+        qs = wallet.entries.select_related(
+            "counterparty_wallet", "recorded_by"
+        ).all()
+        page = self.paginate_queryset(qs)
+        ser = WalletEntrySerializer(page if page is not None else qs, many=True)
+        return (
+            self.get_paginated_response(ser.data)
+            if page is not None
+            else Response(ser.data)
+        )
+
+    @action(detail=True, methods=["get"])
+    def ledger(self, request, pk=None):
+        """Unified, chronological view of every movement that touches this
+        wallet — manual entries plus linked sales, expenses and transactions.
+        Mirrors exactly what `current_balance` sums."""
+        wallet = self.get_object()
+        return Response(build_wallet_ledger(wallet, limit=100))
+
+
+class WalletEntryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = WalletEntry.objects.select_related(
+        "wallet", "counterparty_wallet", "recorded_by"
+    ).all()
+    serializer_class = WalletEntrySerializer
+    permission_classes = [ReadOnlyOrManager]
+    filterset_fields = ["wallet", "entry_type"]
+    search_fields = ["description", "reference", "notes"]
+    ordering_fields = ["occurred_on", "amount", "created_at"]

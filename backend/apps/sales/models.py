@@ -59,6 +59,11 @@ class Sale(BaseModel):
         "accounts.User", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="sales",
     )
+    wallet = models.ForeignKey(
+        "finance.Wallet", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="sales",
+        help_text="Wallet the takings landed in. Drives that wallet's balance.",
+    )
 
     class Meta:
         ordering = ["-occurred_at"]

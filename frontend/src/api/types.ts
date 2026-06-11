@@ -178,6 +178,8 @@ export interface Sale {
   notes: string;
   served_by: UUID | null;
   served_by_name: string | null;
+  wallet: UUID | null;
+  wallet_name: string | null;
   items: SaleItem[];
 }
 
@@ -203,6 +205,8 @@ export interface Expense {
   notes: string;
   recorded_by: UUID | null;
   recorded_by_name: string | null;
+  wallet: UUID | null;
+  wallet_name: string | null;
 }
 
 export type TransactionDirection = 'income' | 'expense';
@@ -233,6 +237,8 @@ export interface Transaction {
   notes: string;
   recorded_by: UUID | null;
   recorded_by_name: string | null;
+  wallet: UUID | null;
+  wallet_name: string | null;
 }
 
 export interface Invoice {
@@ -297,6 +303,61 @@ export interface Asset {
   is_fully_depreciated: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export type WalletAccountType = 'cash' | 'mobile_money' | 'bank' | 'card' | 'other';
+
+export interface Wallet {
+  id: UUID;
+  name: string;
+  account_type: WalletAccountType;
+  account_type_display: string;
+  opening_balance: string;
+  current_balance: string;
+  institution: string;
+  account_number: string;
+  is_active: boolean;
+  notes: string;
+  recorded_by: UUID | null;
+  recorded_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WalletEntryType = 'deposit' | 'withdrawal' | 'transfer_in' | 'transfer_out';
+
+export interface WalletEntry {
+  id: UUID;
+  wallet: UUID;
+  wallet_name: string;
+  entry_type: WalletEntryType;
+  entry_type_display: string;
+  amount: string;
+  signed_amount: string;
+  occurred_on: string;
+  description: string;
+  reference: string;
+  counterparty_wallet: UUID | null;
+  counterparty_wallet_name: string | null;
+  transfer_group: string | null;
+  recorded_by: UUID | null;
+  recorded_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WalletLedgerSource = 'manual' | 'sale' | 'transaction' | 'expense';
+
+export interface WalletLedgerItem {
+  source: WalletLedgerSource;
+  id: UUID;
+  kind: string;
+  kind_display: string;
+  occurred_on: string;
+  description: string;
+  amount: string;
+  direction: 'in' | 'out';
+  created_at: string;
 }
 
 export interface Choice {

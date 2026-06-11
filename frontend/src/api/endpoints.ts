@@ -3,6 +3,7 @@ import type {
   Asset, Budget, Choice, DashboardOverview, Expense, ExpenseCategory, Invoice, LoginResponse,
   Paginated, Product, ProductCategory, ProductionRun, RawMaterial, RecipeItem,
   Sale, StockItem, StockMovement, Supplier, Transaction, TransactionCategory, User,
+  Wallet, WalletEntry, WalletLedgerItem,
 } from './types';
 
 // ── Auth ──────────────────────────────────────────────────────────────────
@@ -134,6 +135,8 @@ export const sales = {
     customer_name?: string;
     customer_phone?: string;
     notes?: string;
+    occurred_at?: string;
+    wallet?: string | null;
   }) => api.post<Sale>('/sales/sales/record/', data).then((r) => r.data),
   remove: (id: string) => api.delete(`/sales/sales/${id}/`),
 };
@@ -217,6 +220,38 @@ export const finance = {
       api.post<Asset>(`/finance/assets/${id}/dispose/`).then((r) => r.data),
     reactivate: (id: string) =>
       api.post<Asset>(`/finance/assets/${id}/reactivate/`).then((r) => r.data),
+  },
+  wallets: {
+    accountTypes: () =>
+      api.get<Choice[]>('/finance/wallets/account-types/').then((r) => r.data),
+    list: (params = {}) =>
+      api.get<Paginated<Wallet>>('/finance/wallets/', { params }).then((r) => r.data),
+    get: (id: string) => api.get<Wallet>(`/finance/wallets/${id}/`).then((r) => r.data),
+    create: (data: Partial<Wallet>) =>
+      api.post<Wallet>('/finance/wallets/', data).then((r) => r.data),
+    update: (id: string, data: Partial<Wallet>) =>
+      api.patch<Wallet>(`/finance/wallets/${id}/`, data).then((r) => r.data),
+    remove: (id: string) => api.delete(`/finance/wallets/${id}/`),
+    deposit: (
+      id: string,
+      data: { amount: number; occurred_on?: string; description?: string; reference?: string; notes?: string },
+    ) => api.post<Wallet>(`/finance/wallets/${id}/deposit/`, data).then((r) => r.data),
+    withdraw: (
+      id: string,
+      data: { amount: number; occurred_on?: string; description?: string; reference?: string; notes?: string },
+    ) => api.post<Wallet>(`/finance/wallets/${id}/withdraw/`, data).then((r) => r.data),
+    transfer: (
+      id: string,
+      data: { destination: string; amount: number; occurred_on?: string; description?: string; reference?: string; notes?: string },
+    ) => api.post<Wallet>(`/finance/wallets/${id}/transfer/`, data).then((r) => r.data),
+    entries: (id: string, params = {}) =>
+      api.get<Paginated<WalletEntry>>(`/finance/wallets/${id}/entries/`, { params }).then((r) => r.data),
+    ledger: (id: string) =>
+      api.get<WalletLedgerItem[]>(`/finance/wallets/${id}/ledger/`).then((r) => r.data),
+  },
+  walletEntries: {
+    list: (params = {}) =>
+      api.get<Paginated<WalletEntry>>('/finance/wallet-entries/', { params }).then((r) => r.data),
   },
 };
 
