@@ -8,20 +8,24 @@ from rest_framework.views import APIView
 
 from apps.core.permissions import ReadOnlyOrManager
 
+from . import services as sale_services
 from .models import Sale
 from .serializers import (
     PaymentMethodChoiceSerializer,
     SaleChannelChoiceSerializer,
     SaleCreateSerializer,
     SaleSerializer,
+    SaleUpdateSerializer,
 )
 
 
 class SaleViewSet(mixins.ListModelMixin,
                   mixins.RetrieveModelMixin,
+                  mixins.UpdateModelMixin,
                   mixins.DestroyModelMixin,
                   viewsets.GenericViewSet):
-    """List + retrieve sales. New sales are created via `record/`."""
+    """List + retrieve sales. New sales are created via `record/`; existing
+    ones can be edited with PUT/PATCH."""
 
     queryset = (
         Sale.objects.select_related("served_by")
@@ -40,6 +44,21 @@ class SaleViewSet(mixins.ListModelMixin,
         serializer.is_valid(raise_exception=True)
         sale = serializer.save()
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = SaleUpdateSerializer(
+            instance, data=request.data, partial=partial, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        sale = serializer.save()
+        return Response(SaleSerializer(sale).data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        sale_services.delete_sale(sale=instance, user=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PaymentMethodListView(APIView):

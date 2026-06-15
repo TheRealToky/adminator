@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/store/AuthContext';
+import { ExportAllMenu } from '@/components/ui/ExportAllMenu';
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
 
 interface Props {
@@ -29,6 +30,10 @@ export function Topbar({ onMenu }: Props) {
           <Menu size={22} />
         </button>
         <div className="flex-1" />
+
+        <div className="mr-2">
+          <ExportAllMenu size="sm" />
+        </div>
 
         <div className="relative mr-2">
           <button

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShoppingBag, Plus, Trash2, X } from 'lucide-react';
+import { ShoppingBag, Plus, Pencil, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -21,11 +21,16 @@ import type { Product, Sale } from '@/api/types';
 
 interface CartLine { product: Product; quantity: number; unit_price: number; }
 
-/** Current local time formatted for a <input type="datetime-local"> value. */
-function nowLocalInput(): string {
-  const d = new Date();
+/** Format a date for a <input type="datetime-local"> value (local time). */
+function toLocalInput(date: Date): string {
+  const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
+}
+
+/** Current local time formatted for a <input type="datetime-local"> value. */
+function nowLocalInput(): string {
+  return toLocalInput(new Date());
 }
 
 export function SalesPage() {
@@ -42,6 +47,7 @@ export function SalesPage() {
   const wallets = useQuery({ queryKey: ['wallets-for-sales'], queryFn: () => finance.wallets.list({ page_size: 200, is_active: true }) });
 
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Sale | null>(null);
   const [viewing, setViewing] = useState<Sale | null>(null);
   const [toDelete, setToDelete] = useState<Sale | null>(null);
 
@@ -62,8 +68,8 @@ export function SalesPage() {
     return Math.max(0, subtotal - Number(discount || 0));
   }, [cart, discount]);
 
-  const submit = useMutation({
-    mutationFn: () => sales.record({
+  function buildPayload() {
+    return {
       items: cart.map((l) => ({ product: l.product.id, quantity: l.quantity, unit_price: l.unit_price })),
       payment_method: paymentMethod,
       channel,
@@ -74,20 +80,67 @@ export function SalesPage() {
       occurred_at: occurredAt ? new Date(occurredAt).toISOString() : undefined,
       // Credit sales bring no cash in yet, so they aren't tied to a wallet.
       wallet: paymentMethod === 'credit' ? null : (walletId || null),
-    }),
+    };
+  }
+
+  const submit = useMutation({
+    mutationFn: () => editing
+      ? sales.update(editing.id, buildPayload())
+      : sales.record(buildPayload()),
     onSuccess: (sale) => {
-      toast.success(t('sales.recorded', { number: sale.receipt_number }));
+      toast.success(
+        editing
+          ? t('sales.updated', { number: sale.receipt_number })
+          : t('sales.recorded', { number: sale.receipt_number }),
+      );
       qc.invalidateQueries({ queryKey: ['sales'] });
       qc.invalidateQueries({ queryKey: ['stock'] });
       qc.invalidateQueries({ queryKey: ['wallets'] });
       qc.invalidateQueries({ queryKey: ['wallets-all'] });
-      setOpen(false);
-      setCart([]); setDiscount('0'); setCustomerName(''); setCustomerPhone(''); setNotes('');
-      setWalletId('');
-      setOccurredAt(nowLocalInput());
+      closeModal();
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
+
+  function resetForm() {
+    setCart([]); setPaymentMethod('cash'); setWalletId(''); setChannel('counter');
+    setDiscount('0'); setCustomerName(''); setCustomerPhone(''); setNotes('');
+    setOccurredAt(nowLocalInput()); setAddProductId('');
+  }
+
+  function openCreate() {
+    setEditing(null);
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(sale: Sale) {
+    setEditing(sale);
+    setCart(sale.items.map((it) => {
+      // Prefer the live product (price/SKU may have changed); fall back to the
+      // line snapshot so sales of now-inactive products still load.
+      const product = products.data?.results.find((p) => p.id === it.product) ?? ({
+        id: it.product, name: it.product_name, sku: it.product_sku,
+        selling_price: it.unit_price,
+      } as Product);
+      return { product, quantity: Number(it.quantity), unit_price: Number(it.unit_price) };
+    }));
+    setPaymentMethod(sale.payment_method);
+    setChannel(sale.channel);
+    setDiscount(String(sale.discount));
+    setCustomerName(sale.customer_name);
+    setCustomerPhone(sale.customer_phone);
+    setNotes(sale.notes);
+    setWalletId(sale.wallet ?? '');
+    setOccurredAt(toLocalInput(new Date(sale.occurred_at)));
+    setOpen(true);
+  }
+
+  function closeModal() {
+    setOpen(false);
+    setEditing(null);
+    resetForm();
+  }
 
   function addToCart() {
     const product = products.data?.results.find((p) => p.id === addProductId);
@@ -115,9 +168,14 @@ export function SalesPage() {
     { key: 'total', header: t('sales.columns.total'), align: 'right', render: (r) => <span className="font-semibold">{formatMoney(r.total)}</span> },
     { key: 'profit', header: t('sales.columns.profit'), align: 'right', render: (r) => <span className="text-emerald-700">{formatMoney(r.profit)}</span> },
     { key: 'actions', header: '', align: 'right', render: (r) => (
-      <button className="btn-ghost p-1.5 text-red-600" onClick={(e) => { e.stopPropagation(); setToDelete(r); }}>
-        <Trash2 size={14} />
-      </button>
+      <div className="flex justify-end gap-1">
+        <button className="btn-ghost p-1.5" onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
+          <Pencil size={14} />
+        </button>
+        <button className="btn-ghost p-1.5 text-red-600" onClick={(e) => { e.stopPropagation(); setToDelete(r); }}>
+          <Trash2 size={14} />
+        </button>
+      </div>
     )},
   ];
 
@@ -153,7 +211,7 @@ export function SalesPage() {
                 list.search ? { search: list.search } : {},
               )}
             />
-            <button onClick={() => { setOccurredAt(nowLocalInput()); setOpen(true); }} className="btn-primary"><Plus size={16} /> {t('sales.new')}</button>
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> {t('sales.new')}</button>
           </>
         }
       />
@@ -173,11 +231,11 @@ export function SalesPage() {
         {list.data && <Pagination page={list.page} pageSize={list.pageSize} total={list.data.count} onChange={list.setPage} />}
       </div>
 
-      {/* New sale modal */}
+      {/* New / edit sale modal */}
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
-        title={t('sales.new')}
+        onClose={closeModal}
+        title={editing ? t('sales.edit') : t('sales.new')}
         size="xl"
         footer={
           <>
@@ -186,13 +244,15 @@ export function SalesPage() {
               {Number(discount) > 0 && <> · {t('sales.footer.discount', { value: formatMoney(Number(discount)) })}</>}
               <span className="ml-3 text-base text-slate-900 font-semibold">{t('sales.footer.total', { value: formatMoney(total) })}</span>
             </div>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
+            <button className="btn-secondary" onClick={closeModal}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
               disabled={cart.length === 0 || submit.isPending}
               onClick={() => submit.mutate()}
             >
-              {submit.isPending ? t('sales.footer.recording') : t('sales.footer.record')}
+              {submit.isPending
+                ? (editing ? t('common.saving') : t('sales.footer.recording'))
+                : (editing ? t('common.save') : t('sales.footer.record'))}
             </button>
           </>
         }

@@ -109,6 +109,39 @@
       "csvHint": "Comma-separated",
       "json": "JSON (.json)",
       "jsonHint": "Raw data"
+    },
+    "all": {
+      "label": "Export all",
+      "heading": "Export everything",
+      "filename": "adminator-export",
+      "progress": "Exporting {{format}} ({{done}}/{{total}})…",
+      "success": "Exported {{tables}} tables ({{rows}} rows) as {{format}}.",
+      "skipped": "Skipped {{name}} — couldn't load it.",
+      "partial": "{{count}} table(s) were skipped.",
+      "formatHints": {
+        "xlsx": "One workbook, one sheet per table",
+        "csv": "One file, a labelled section per table",
+        "json": "One file, keyed by table"
+      },
+      "tables": {
+        "products": "Products",
+        "raw_materials": "Raw materials",
+        "processed_materials": "Processed materials",
+        "suppliers": "Suppliers",
+        "stock": "Stock on hand",
+        "stock_movements": "Stock movements",
+        "processed_material_movements": "Processed-material movements",
+        "production_runs": "Production runs",
+        "processed_material_batches": "Processed-material batches",
+        "sales": "Sales",
+        "transactions": "Transactions",
+        "transaction_categories": "Transaction categories",
+        "invoices": "Invoices",
+        "budgets": "Budgets",
+        "assets": "Assets",
+        "wallets": "Wallets",
+        "users": "Staff"
+      }
     }
   },
   "dashboard": {
@@ -418,10 +451,13 @@
     "subtitle": "Bake & cook runs — automatically consumes raw materials",
     "new": "New run",
     "newTitle": "New production run",
+    "editTitle": "Edit production run",
+    "editHint": "Product and quantity are locked because this run's stock movements are already posted. You can amend the schedule date and notes.",
     "searchPlaceholder": "Search by product…",
     "emptyTitle": "No production runs yet",
     "emptyDescription": "Record what you bake to keep stock and costs accurate.",
     "recorded": "Production run recorded.",
+    "updated": "Production run updated.",
     "deleteTitle": "Delete this run?",
     "deleteMessage": "The run will be removed but related stock movements are preserved for audit.",
     "columns": {
@@ -464,11 +500,13 @@
     "title": "Sales",
     "subtitle": "Record receipts; stock and profit update automatically.",
     "new": "New sale",
+    "edit": "Edit sale",
     "searchPlaceholder": "Search by receipt, customer…",
     "emptyTitle": "No sales recorded yet",
     "deleteTitle": "Delete this sale?",
     "deleteMessage": "Receipt will be removed permanently.",
     "recorded": "Receipt {{number}} recorded.",
+    "updated": "Receipt {{number}} updated.",
     "columns": {
       "when": "When",
       "receipt": "Receipt",

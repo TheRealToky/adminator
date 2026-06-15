@@ -116,6 +116,8 @@ export const production = {
     get: (id: string) => api.get<ProductionRun>(`/production/runs/${id}/`).then((r) => r.data),
     execute: (data: { product: string; quantity: number; notes?: string; scheduled_for?: string; status?: string }) =>
       api.post<ProductionRun>('/production/runs/execute/', data).then((r) => r.data),
+    update: (id: string, data: { scheduled_for?: string; notes?: string }) =>
+      api.patch<ProductionRun>(`/production/runs/${id}/`, data).then((r) => r.data),
     remove: (id: string) => api.delete(`/production/runs/${id}/`),
   },
 };
@@ -138,6 +140,17 @@ export const sales = {
     occurred_at?: string;
     wallet?: string | null;
   }) => api.post<Sale>('/sales/sales/record/', data).then((r) => r.data),
+  update: (id: string, data: {
+    items: Array<{ product: string; quantity: number; unit_price?: number }>;
+    payment_method?: string;
+    channel?: string;
+    discount?: number;
+    customer_name?: string;
+    customer_phone?: string;
+    notes?: string;
+    occurred_at?: string;
+    wallet?: string | null;
+  }) => api.put<Sale>(`/sales/sales/${id}/`, data).then((r) => r.data),
   remove: (id: string) => api.delete(`/sales/sales/${id}/`),
 };
 

@@ -29,6 +29,20 @@ class ProductionRunSerializer(serializers.ModelSerializer):
         )
 
 
+class ProductionRunUpdateSerializer(serializers.ModelSerializer):
+    """Edit a recorded run's metadata only.
+
+    Product, quantity and cost are locked: a run's stock movements are already
+    posted (and preserved on delete for audit), so changing what or how much was
+    produced would silently desync inventory. Only the schedule date and notes
+    are safe to amend after the fact.
+    """
+
+    class Meta:
+        model = ProductionRun
+        fields = ("scheduled_for", "notes")
+
+
 class ProductionExecuteSerializer(serializers.Serializer):
     """Run production now: consume raw materials, add finished stock."""
 

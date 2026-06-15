@@ -109,6 +109,39 @@
       "csvHint": "Valeurs séparées par des virgules",
       "json": "JSON (.json)",
       "jsonHint": "Données brutes"
+    },
+    "all": {
+      "label": "Tout exporter",
+      "heading": "Exporter toutes les données",
+      "filename": "adminator-export",
+      "progress": "Export {{format}} ({{done}}/{{total}})…",
+      "success": "{{tables}} tables ({{rows}} lignes) exportées en {{format}}.",
+      "skipped": "{{name}} ignoré — chargement impossible.",
+      "partial": "{{count}} table(s) ignorée(s).",
+      "formatHints": {
+        "xlsx": "Un classeur, une feuille par table",
+        "csv": "Un fichier, une section par table",
+        "json": "Un fichier, indexé par table"
+      },
+      "tables": {
+        "products": "Produits",
+        "raw_materials": "Matières premières",
+        "processed_materials": "Produits transformés",
+        "suppliers": "Fournisseurs",
+        "stock": "Stock disponible",
+        "stock_movements": "Mouvements de stock",
+        "processed_material_movements": "Mouvements des produits transformés",
+        "production_runs": "Productions",
+        "processed_material_batches": "Lots de produits transformés",
+        "sales": "Ventes",
+        "transactions": "Transactions",
+        "transaction_categories": "Catégories de transactions",
+        "invoices": "Factures",
+        "budgets": "Budgets",
+        "assets": "Immobilisations",
+        "wallets": "Portefeuilles",
+        "users": "Personnel"
+      }
     }
   },
   "dashboard": {
@@ -401,10 +434,13 @@
     "subtitle": "Cuissons et préparations — consomme automatiquement les matières premières",
     "new": "Nouvelle production",
     "newTitle": "Nouvelle production",
+    "editTitle": "Modifier la production",
+    "editHint": "Le produit et la quantité sont verrouillés car les mouvements de stock de cette production sont déjà enregistrés. Vous pouvez modifier la date planifiée et les notes.",
     "searchPlaceholder": "Rechercher par produit…",
     "emptyTitle": "Aucune production",
     "emptyDescription": "Enregistrez ce que vous produisez pour garder le stock et les coûts à jour.",
     "recorded": "Production enregistrée.",
+    "updated": "Production mise à jour.",
     "deleteTitle": "Supprimer cette production ?",
     "deleteMessage": "La production sera supprimée mais les mouvements de stock liés sont conservés pour audit.",
     "columns": {
@@ -447,11 +483,13 @@
     "title": "Ventes",
     "subtitle": "Enregistrez les tickets ; le stock et le bénéfice se mettent à jour automatiquement.",
     "new": "Nouvelle vente",
+    "edit": "Modifier la vente",
     "searchPlaceholder": "Rechercher par ticket, client…",
     "emptyTitle": "Aucune vente enregistrée",
     "deleteTitle": "Supprimer cette vente ?",
     "deleteMessage": "Le ticket sera supprimé définitivement.",
     "recorded": "Ticket {{number}} enregistré.",
+    "updated": "Ticket {{number}} mis à jour.",
     "columns": {
       "when": "Quand",
       "receipt": "Ticket",

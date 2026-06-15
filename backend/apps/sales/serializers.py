@@ -100,6 +100,26 @@ class SaleCreateSerializer(serializers.Serializer):
         )
 
 
+class SaleUpdateSerializer(SaleCreateSerializer):
+    """Edit an existing sale, reusing the create payload shape."""
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        return services.update_sale(
+            sale=self.instance,
+            items=self.validated_data["items"],
+            payment_method=self.validated_data["payment_method"],
+            channel=self.validated_data["channel"],
+            discount=self.validated_data["discount"],
+            customer_name=self.validated_data.get("customer_name", ""),
+            customer_phone=self.validated_data.get("customer_phone", ""),
+            notes=self.validated_data.get("notes", ""),
+            occurred_at=self.validated_data.get("occurred_at"),
+            user=user,
+            wallet=self.validated_data.get("wallet"),
+        )
+
+
 class PaymentMethodChoiceSerializer(serializers.Serializer):
     value = serializers.CharField()
     label = serializers.CharField()

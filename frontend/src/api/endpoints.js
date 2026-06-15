@@ -73,6 +73,7 @@ export const production = {
         list: (params = {}) => api.get('/production/runs/', { params }).then((r) => r.data),
         get: (id) => api.get(`/production/runs/${id}/`).then((r) => r.data),
         execute: (data) => api.post('/production/runs/execute/', data).then((r) => r.data),
+        update: (id, data) => api.patch(`/production/runs/${id}/`, data).then((r) => r.data),
         remove: (id) => api.delete(`/production/runs/${id}/`),
     },
 };
@@ -83,6 +84,7 @@ export const sales = {
     list: (params = {}) => api.get('/sales/sales/', { params }).then((r) => r.data),
     get: (id) => api.get(`/sales/sales/${id}/`).then((r) => r.data),
     record: (data) => api.post('/sales/sales/record/', data).then((r) => r.data),
+    update: (id, data) => api.put(`/sales/sales/${id}/`, data).then((r) => r.data),
     remove: (id) => api.delete(`/sales/sales/${id}/`),
 };
 // ── Finance ───────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Factory, PlayCircle, Trash2 } from 'lucide-react';
+import { Factory, PlayCircle, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -33,25 +33,54 @@ export function ProductionPage() {
   });
 
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ProductionRun | null>(null);
   const [productId, setProductId] = useState('');
   const [qty, setQty] = useState('');
   const [scheduledFor, setScheduledFor] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
   const [toDelete, setToDelete] = useState<ProductionRun | null>(null);
 
-  const execute = useMutation({
-    mutationFn: () => production.runs.execute({
-      product: productId,
-      quantity: Number(qty),
-      scheduled_for: scheduledFor,
-      notes,
-    }),
+  function resetForm() {
+    setProductId(''); setQty('');
+    setScheduledFor(new Date().toISOString().slice(0, 10)); setNotes('');
+  }
+  function openCreate() {
+    setEditing(null);
+    resetForm();
+    setOpen(true);
+  }
+  function openEdit(run: ProductionRun) {
+    setEditing(run);
+    setProductId(run.product);
+    setQty(String(run.quantity));
+    setScheduledFor(run.scheduled_for);
+    setNotes(run.notes);
+    setOpen(true);
+  }
+  function closeModal() {
+    setOpen(false);
+    setEditing(null);
+    resetForm();
+  }
+
+  const submit = useMutation({
+    // Editing only amends metadata; recording a new run consumes stock.
+    mutationFn: () => editing
+      ? production.runs.update(editing.id, { scheduled_for: scheduledFor, notes })
+      : production.runs.execute({
+          product: productId,
+          quantity: Number(qty),
+          scheduled_for: scheduledFor,
+          notes,
+        }),
     onSuccess: () => {
-      toast.success(t('production.recorded'));
+      toast.success(editing ? t('production.updated') : t('production.recorded'));
       qc.invalidateQueries({ queryKey: ['production-runs'] });
-      qc.invalidateQueries({ queryKey: ['stock'] });
-      qc.invalidateQueries({ queryKey: ['movements'] });
-      setOpen(false); setProductId(''); setQty(''); setNotes('');
+      if (!editing) {
+        qc.invalidateQueries({ queryKey: ['stock'] });
+        qc.invalidateQueries({ queryKey: ['movements'] });
+      }
+      closeModal();
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
@@ -78,12 +107,20 @@ export function ProductionPage() {
     { key: 'when', header: t('production.columns.completed'), render: (r) => r.completed_at ? formatDateTime(r.completed_at) : '—' },
     { key: 'by', header: t('production.columns.by'), render: (r) => r.created_by_name ?? '—' },
     { key: 'actions', header: '', align: 'right', render: (r) => (
-      <button
-        className="btn-ghost p-1.5 text-red-600"
-        onClick={(e) => { e.stopPropagation(); setToDelete(r); }}
-      >
-        <Trash2 size={14} />
-      </button>
+      <div className="flex justify-end gap-1">
+        <button
+          className="btn-ghost p-1.5"
+          onClick={(e) => { e.stopPropagation(); openEdit(r); }}
+        >
+          <Pencil size={14} />
+        </button>
+        <button
+          className="btn-ghost p-1.5 text-red-600"
+          onClick={(e) => { e.stopPropagation(); setToDelete(r); }}
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
     )},
   ];
 
@@ -114,7 +151,7 @@ export function ProductionPage() {
                 list.search ? { search: list.search } : {},
               )}
             />
-            <button onClick={() => setOpen(true)} className="btn-primary">
+            <button onClick={openCreate} className="btn-primary">
               <PlayCircle size={16} /> {t('production.new')}
             </button>
           </>
@@ -138,17 +175,19 @@ export function ProductionPage() {
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
-        title={t('production.newTitle')}
+        onClose={closeModal}
+        title={editing ? t('production.editTitle') : t('production.newTitle')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setOpen(false)}>{t('common.cancel')}</button>
+            <button className="btn-secondary" onClick={closeModal}>{t('common.cancel')}</button>
             <button
               className="btn-primary"
-              disabled={!productId || !qty || execute.isPending}
-              onClick={() => execute.mutate()}
+              disabled={(!editing && (!productId || !qty)) || submit.isPending}
+              onClick={() => submit.mutate()}
             >
-              {execute.isPending ? t('production.footer.recording') : t('production.footer.record')}
+              {submit.isPending
+                ? (editing ? t('common.saving') : t('production.footer.recording'))
+                : (editing ? t('common.save') : t('production.footer.record'))}
             </button>
           </>
         }
@@ -156,17 +195,28 @@ export function ProductionPage() {
         <div className="space-y-4">
           <div>
             <label className="label">{t('production.fields.product')}</label>
-            <select className="input" value={productId} onChange={(e) => setProductId(e.target.value)}>
-              <option value="">{t('common.select')}</option>
-              {products.data?.results.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            {editing ? (
+              <div className="input bg-slate-50 text-slate-600">
+                {editing.product_name}
+                <span className="ml-2 font-mono text-xs text-slate-400">{editing.product_sku}</span>
+              </div>
+            ) : (
+              <select className="input" value={productId} onChange={(e) => setProductId(e.target.value)}>
+                <option value="">{t('common.select')}</option>
+                {products.data?.results.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">{t('production.fields.quantity')}</label>
-              <input type="number" step="0.0001" className="input" value={qty} onChange={(e) => setQty(e.target.value)} />
+              {editing ? (
+                <div className="input bg-slate-50 text-slate-600">{formatQuantity(editing.quantity)}</div>
+              ) : (
+                <input type="number" step="0.0001" className="input" value={qty} onChange={(e) => setQty(e.target.value)} />
+              )}
             </div>
             <div>
               <label className="label">{t('production.fields.scheduledFor')}</label>
@@ -178,7 +228,7 @@ export function ProductionPage() {
             <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           <p className="text-xs text-slate-500">
-            {t('production.footer.hint')}
+            {editing ? t('production.editHint') : t('production.footer.hint')}
           </p>
         </div>
       </Modal>
