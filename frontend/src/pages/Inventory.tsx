@@ -36,6 +36,7 @@ export function InventoryPage() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('all');
   const [adjustOpen, setAdjustOpen] = useState<StockItem | null>(null);
+  const [pmAdjustOpen, setPmAdjustOpen] = useState<ProcessedMaterialStock | null>(null);
   const [writeOffOpen, setWriteOffOpen] = useState<StockItem | null>(null);
   const [pmWriteOffOpen, setPmWriteOffOpen] = useState<ProcessedMaterialStock | null>(null);
 
@@ -69,6 +70,7 @@ export function InventoryPage() {
         {tab === 'all' && (
           <CombinedStockTab
             onAdjust={setAdjustOpen}
+            onPmAdjust={setPmAdjustOpen}
             onWriteOff={setWriteOffOpen}
             onPmWriteOff={setPmWriteOffOpen}
           />
@@ -77,6 +79,7 @@ export function InventoryPage() {
           <CombinedStockTab
             lowOnly
             onAdjust={setAdjustOpen}
+            onPmAdjust={setPmAdjustOpen}
             onWriteOff={setWriteOffOpen}
             onPmWriteOff={setPmWriteOffOpen}
           />
@@ -85,6 +88,10 @@ export function InventoryPage() {
       </div>
 
       <AdjustModal stock={adjustOpen} onClose={() => setAdjustOpen(null)} />
+      <ProcessedAdjustModal
+        stock={pmAdjustOpen}
+        onClose={() => setPmAdjustOpen(null)}
+      />
       <WriteOffModal stock={writeOffOpen} onClose={() => setWriteOffOpen(null)} />
       <ProcessedWriteOffModal
         stock={pmWriteOffOpen}
@@ -120,6 +127,7 @@ async function fetchCombinedStock(lowOnly: boolean): Promise<UnifiedStock[]> {
 
 function useStockColumns(
   onAdjust: (s: StockItem) => void,
+  onPmAdjust: (s: ProcessedMaterialStock) => void,
   onWriteOff: (s: StockItem) => void,
   onPmWriteOff: (s: ProcessedMaterialStock) => void,
 ): Column<UnifiedStock>[] {
@@ -151,14 +159,12 @@ function useStockColumns(
     },
     { key: 'actions', header: '', align: 'right', render: (r) => (
       <div className="flex justify-end gap-1">
-        {r.kind !== 'processed' && (
-          <button
-            className="btn-secondary px-2 py-1 text-xs"
-            onClick={() => onAdjust(r)}
-          >
-            <Sliders size={12} /> {t('inventory.actions.adjust')}
-          </button>
-        )}
+        <button
+          className="btn-secondary px-2 py-1 text-xs"
+          onClick={() => (r.kind === 'processed' ? onPmAdjust(r) : onAdjust(r))}
+        >
+          <Sliders size={12} /> {t('inventory.actions.adjust')}
+        </button>
         <button
           className="btn-ghost px-2 py-1 text-xs text-red-600"
           title={t('inventory.actions.writeOff')}
@@ -188,11 +194,13 @@ function useStockExportColumns(): ExportColumn<UnifiedStock>[] {
 function CombinedStockTab({
   lowOnly = false,
   onAdjust,
+  onPmAdjust,
   onWriteOff,
   onPmWriteOff,
 }: {
   lowOnly?: boolean;
   onAdjust: (s: StockItem) => void;
+  onPmAdjust: (s: ProcessedMaterialStock) => void;
   onWriteOff: (s: StockItem) => void;
   onPmWriteOff: (s: ProcessedMaterialStock) => void;
 }) {
@@ -206,7 +214,7 @@ function CombinedStockTab({
     queryFn: () => fetchCombinedStock(lowOnly),
   });
 
-  const columns = useStockColumns(onAdjust, onWriteOff, onPmWriteOff);
+  const columns = useStockColumns(onAdjust, onPmAdjust, onWriteOff, onPmWriteOff);
   const exportColumns = useStockExportColumns();
 
   const kindFilters: { key: KindFilter; label: string }[] = [
@@ -389,6 +397,79 @@ function AdjustModal({ stock, onClose }: { stock: StockItem | null; onClose: () 
       <div className="space-y-3">
         <div>
           <label className="label">{t('inventory.adjust.delta', { unit: stock.item_unit })}</label>
+          <input
+            type="number" step="0.0001" className="input"
+            value={delta} onChange={(e) => setDelta(e.target.value)} autoFocus
+          />
+        </div>
+        <div>
+          <label className="label">{t('common.noteOptional')}</label>
+          <textarea className="input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Adjust modal (processed materials) ───────────────────────────────────
+function ProcessedAdjustModal({
+  stock, onClose,
+}: { stock: ProcessedMaterialStock | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { t } = useTranslation();
+  const [delta, setDelta] = useState('');
+  const [note, setNote] = useState('');
+
+  const mutate = useMutation({
+    mutationFn: () => processedMaterials.stock.adjust({
+      processed_material: stock!.processed_material,
+      quantity_delta: Number(delta),
+      note,
+    }),
+    onSuccess: () => {
+      toast.success(t('processedMaterials.adjust.recorded'));
+      qc.invalidateQueries({ queryKey: ['processed-stock'] });
+      qc.invalidateQueries({ queryKey: ['stock-combined'] });
+      qc.invalidateQueries({ queryKey: ['processed-materials'] });
+      qc.invalidateQueries({ queryKey: ['processed-movements'] });
+      onClose(); setDelta(''); setNote('');
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
+
+  if (!stock) return null;
+
+  return (
+    <Modal
+      open={!!stock}
+      onClose={onClose}
+      title={t('processedMaterials.adjust.title', { name: stock.item_name })}
+      size="sm"
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
+          <button
+            className="btn-primary"
+            disabled={!delta || Number(delta) === 0 || mutate.isPending}
+            onClick={() => mutate.mutate()}
+          >
+            {mutate.isPending ? t('common.saving') : t('common.apply')}
+          </button>
+        </>
+      }
+    >
+      <p
+        className="text-sm text-slate-500 mb-3"
+        dangerouslySetInnerHTML={{
+          __html: t('processedMaterials.adjust.currentOnHand', {
+            qty: formatQuantity(stock.quantity),
+            unit: stock.item_unit,
+          }),
+        }}
+      />
+      <div className="space-y-3">
+        <div>
+          <label className="label">{t('processedMaterials.adjust.delta', { unit: stock.item_unit })}</label>
           <input
             type="number" step="0.0001" className="input"
             value={delta} onChange={(e) => setDelta(e.target.value)} autoFocus

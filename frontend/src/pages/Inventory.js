@@ -21,6 +21,7 @@ export function InventoryPage() {
     const { t } = useTranslation();
     const [tab, setTab] = useState('all');
     const [adjustOpen, setAdjustOpen] = useState(null);
+    const [pmAdjustOpen, setPmAdjustOpen] = useState(null);
     const [writeOffOpen, setWriteOffOpen] = useState(null);
     const [pmWriteOffOpen, setPmWriteOffOpen] = useState(null);
     const tabs = [
@@ -28,7 +29,7 @@ export function InventoryPage() {
         { key: 'low', label: t('inventory.tabs.low'), icon: AlertTriangle },
         { key: 'movements', label: t('inventory.tabs.movements'), icon: History },
     ];
-    return (_jsxs(_Fragment, { children: [_jsx(PageHeader, { title: t('inventory.title'), subtitle: t('inventory.subtitle') }), _jsxs("div", { className: "card", children: [_jsx("div", { className: "card-header gap-2 flex-wrap", children: _jsx("div", { className: "flex gap-1", children: tabs.map(({ key, label, icon: Icon }) => (_jsxs("button", { onClick: () => setTab(key), className: `px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 ${tab === key ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'}`, children: [_jsx(Icon, { size: 14 }), " ", label] }, key))) }) }), tab === 'all' && (_jsx(CombinedStockTab, { onAdjust: setAdjustOpen, onWriteOff: setWriteOffOpen, onPmWriteOff: setPmWriteOffOpen })), tab === 'low' && (_jsx(CombinedStockTab, { lowOnly: true, onAdjust: setAdjustOpen, onWriteOff: setWriteOffOpen, onPmWriteOff: setPmWriteOffOpen })), tab === 'movements' && _jsx(MovementsTab, {})] }), _jsx(AdjustModal, { stock: adjustOpen, onClose: () => setAdjustOpen(null) }), _jsx(WriteOffModal, { stock: writeOffOpen, onClose: () => setWriteOffOpen(null) }), _jsx(ProcessedWriteOffModal, { stock: pmWriteOffOpen, onClose: () => setPmWriteOffOpen(null) })] }));
+    return (_jsxs(_Fragment, { children: [_jsx(PageHeader, { title: t('inventory.title'), subtitle: t('inventory.subtitle') }), _jsxs("div", { className: "card", children: [_jsx("div", { className: "card-header gap-2 flex-wrap", children: _jsx("div", { className: "flex gap-1", children: tabs.map(({ key, label, icon: Icon }) => (_jsxs("button", { onClick: () => setTab(key), className: `px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 ${tab === key ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'}`, children: [_jsx(Icon, { size: 14 }), " ", label] }, key))) }) }), tab === 'all' && (_jsx(CombinedStockTab, { onAdjust: setAdjustOpen, onPmAdjust: setPmAdjustOpen, onWriteOff: setWriteOffOpen, onPmWriteOff: setPmWriteOffOpen })), tab === 'low' && (_jsx(CombinedStockTab, { lowOnly: true, onAdjust: setAdjustOpen, onPmAdjust: setPmAdjustOpen, onWriteOff: setWriteOffOpen, onPmWriteOff: setPmWriteOffOpen })), tab === 'movements' && _jsx(MovementsTab, {})] }), _jsx(AdjustModal, { stock: adjustOpen, onClose: () => setAdjustOpen(null) }), _jsx(ProcessedAdjustModal, { stock: pmAdjustOpen, onClose: () => setPmAdjustOpen(null) }), _jsx(WriteOffModal, { stock: writeOffOpen, onClose: () => setWriteOffOpen(null) }), _jsx(ProcessedWriteOffModal, { stock: pmWriteOffOpen, onClose: () => setPmWriteOffOpen(null) })] }));
 }
 // ── Tabs ──────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 25;
@@ -49,7 +50,7 @@ async function fetchCombinedStock(lowOnly) {
     rows.sort((a, b) => a.item_name.localeCompare(b.item_name));
     return rows;
 }
-function useStockColumns(onAdjust, onWriteOff, onPmWriteOff) {
+function useStockColumns(onAdjust, onPmAdjust, onWriteOff, onPmWriteOff) {
     const { t } = useTranslation();
     return [
         { key: 'name', header: t('inventory.columns.item'), render: (r) => (_jsxs("div", { children: [_jsx("p", { className: "font-medium", children: r.item_name }), _jsx("p", { className: "text-xs text-slate-500 font-mono", children: r.item_sku })] })) },
@@ -65,7 +66,7 @@ function useStockColumns(onAdjust, onWriteOff, onPmWriteOff) {
                 ? _jsx("span", { className: "badge-red", children: t('inventory.badges.low') })
                 : _jsx("span", { className: "badge-green", children: t('inventory.badges.ok') })
         },
-        { key: 'actions', header: '', align: 'right', render: (r) => (_jsxs("div", { className: "flex justify-end gap-1", children: [r.kind !== 'processed' && (_jsxs("button", { className: "btn-secondary px-2 py-1 text-xs", onClick: () => onAdjust(r), children: [_jsx(Sliders, { size: 12 }), " ", t('inventory.actions.adjust')] })), _jsxs("button", { className: "btn-ghost px-2 py-1 text-xs text-red-600", title: t('inventory.actions.writeOff'), disabled: Number(r.quantity) <= 0, onClick: () => (r.kind === 'processed' ? onPmWriteOff(r) : onWriteOff(r)), children: [_jsx(Trash2, { size: 12 }), " ", t('inventory.actions.writeOff')] })] })) },
+        { key: 'actions', header: '', align: 'right', render: (r) => (_jsxs("div", { className: "flex justify-end gap-1", children: [_jsxs("button", { className: "btn-secondary px-2 py-1 text-xs", onClick: () => (r.kind === 'processed' ? onPmAdjust(r) : onAdjust(r)), children: [_jsx(Sliders, { size: 12 }), " ", t('inventory.actions.adjust')] }), _jsxs("button", { className: "btn-ghost px-2 py-1 text-xs text-red-600", title: t('inventory.actions.writeOff'), disabled: Number(r.quantity) <= 0, onClick: () => (r.kind === 'processed' ? onPmWriteOff(r) : onWriteOff(r)), children: [_jsx(Trash2, { size: 12 }), " ", t('inventory.actions.writeOff')] })] })) },
     ];
 }
 function useStockExportColumns() {
@@ -80,7 +81,7 @@ function useStockExportColumns() {
         { key: 'is_low', header: t('inventory.exportCols.lowStock'), value: (r) => (r.is_low ? t('common.yes') : t('common.no')) },
     ];
 }
-function CombinedStockTab({ lowOnly = false, onAdjust, onWriteOff, onPmWriteOff, }) {
+function CombinedStockTab({ lowOnly = false, onAdjust, onPmAdjust, onWriteOff, onPmWriteOff, }) {
     const { t } = useTranslation();
     const [search, setSearch] = useState('');
     const [kind, setKind] = useState('all');
@@ -89,7 +90,7 @@ function CombinedStockTab({ lowOnly = false, onAdjust, onWriteOff, onPmWriteOff,
         queryKey: lowOnly ? ['stock-combined', 'low'] : ['stock-combined', 'all'],
         queryFn: () => fetchCombinedStock(lowOnly),
     });
-    const columns = useStockColumns(onAdjust, onWriteOff, onPmWriteOff);
+    const columns = useStockColumns(onAdjust, onPmAdjust, onWriteOff, onPmWriteOff);
     const exportColumns = useStockExportColumns();
     const kindFilters = [
         { key: 'all', label: t('inventory.filter.all') },
@@ -174,6 +175,39 @@ function AdjustModal({ stock, onClose }) {
                         unit: stock.item_unit,
                     }),
                 } }), _jsxs("div", { className: "space-y-3", children: [_jsxs("div", { children: [_jsx("label", { className: "label", children: t('inventory.adjust.delta', { unit: stock.item_unit }) }), _jsx("input", { type: "number", step: "0.0001", className: "input", value: delta, onChange: (e) => setDelta(e.target.value), autoFocus: true })] }), _jsxs("div", { children: [_jsx("label", { className: "label", children: t('common.noteOptional') }), _jsx("textarea", { className: "input", rows: 2, value: note, onChange: (e) => setNote(e.target.value) })] })] })] }));
+}
+// ── Adjust modal (processed materials) ───────────────────────────────────
+function ProcessedAdjustModal({ stock, onClose, }) {
+    const qc = useQueryClient();
+    const { t } = useTranslation();
+    const [delta, setDelta] = useState('');
+    const [note, setNote] = useState('');
+    const mutate = useMutation({
+        mutationFn: () => processedMaterials.stock.adjust({
+            processed_material: stock.processed_material,
+            quantity_delta: Number(delta),
+            note,
+        }),
+        onSuccess: () => {
+            toast.success(t('processedMaterials.adjust.recorded'));
+            qc.invalidateQueries({ queryKey: ['processed-stock'] });
+            qc.invalidateQueries({ queryKey: ['stock-combined'] });
+            qc.invalidateQueries({ queryKey: ['processed-materials'] });
+            qc.invalidateQueries({ queryKey: ['processed-movements'] });
+            onClose();
+            setDelta('');
+            setNote('');
+        },
+        onError: (e) => toast.error(extractErrorMessage(e)),
+    });
+    if (!stock)
+        return null;
+    return (_jsxs(Modal, { open: !!stock, onClose: onClose, title: t('processedMaterials.adjust.title', { name: stock.item_name }), size: "sm", footer: _jsxs(_Fragment, { children: [_jsx("button", { className: "btn-secondary", onClick: onClose, children: t('common.cancel') }), _jsx("button", { className: "btn-primary", disabled: !delta || Number(delta) === 0 || mutate.isPending, onClick: () => mutate.mutate(), children: mutate.isPending ? t('common.saving') : t('common.apply') })] }), children: [_jsx("p", { className: "text-sm text-slate-500 mb-3", dangerouslySetInnerHTML: {
+                    __html: t('processedMaterials.adjust.currentOnHand', {
+                        qty: formatQuantity(stock.quantity),
+                        unit: stock.item_unit,
+                    }),
+                } }), _jsxs("div", { className: "space-y-3", children: [_jsxs("div", { children: [_jsx("label", { className: "label", children: t('processedMaterials.adjust.delta', { unit: stock.item_unit }) }), _jsx("input", { type: "number", step: "0.0001", className: "input", value: delta, onChange: (e) => setDelta(e.target.value), autoFocus: true })] }), _jsxs("div", { children: [_jsx("label", { className: "label", children: t('common.noteOptional') }), _jsx("textarea", { className: "input", rows: 2, value: note, onChange: (e) => setNote(e.target.value) })] })] })] }));
 }
 // ── Write-off modal (products / raw materials) ───────────────────────────
 function WriteOffModal({ stock, onClose }) {
