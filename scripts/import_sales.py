@@ -21,9 +21,11 @@ shortfall and retries the sale. Those production runs go through the same path a
 material is topped up and the run retried. So an out-of-stock sale cascades into
 "produce the product (buying any raw materials it needs), then sell it".
 
-Voided lines are skipped. Product names are matched to the catalog case/accent-
-insensitively with a small alias table; lines whose product can't be matched
-confidently are reported and skipped (the rest of the order still goes in).
+Voided lines are skipped, and any order containing a **CEVR** payment line is
+dropped in full — nothing for that order is written, even its non-CEVR lines.
+Product names are matched to the catalog case/accent-insensitively with a small
+alias table; lines whose product can't be matched confidently are reported and
+skipped (the rest of the order still goes in).
 
 Safe by default: **dry-run** (parse + match + plan, no writes). Pass ``--commit``
 to record the sales.
@@ -64,14 +66,17 @@ DEFAULT_EMAIL = os.environ.get("ADMINATOR_EMAIL", "admin@adminator.local")
 DEFAULT_PASSWORD = os.environ.get("ADMINATOR_PASSWORD", "admin12345")
 DEFAULT_FILE = os.environ.get(
     "SALES_XLSX",
-    r"D:\PC DISAINE\toky\Perso-D\red\sales\2026_06_16\pastry_shop_sales_2026-06-16.xlsx",
+    r"D:\PC DISAINE\toky\Perso-D\red\sales\img_extraction\pastry_sales_2026-06-26.xlsx"
 )
-DEFAULT_DATE = "2026-06-16"        # fallback if a row has no Date
+DEFAULT_DATE = "2026-06-26"        # fallback if a row has no Date
 DEFAULT_OFFSET = "+02:00"          # Africa/Kigali (no DST)
 SHEET_NAME = "Sales Lines"
 
 # Payment method (sheet) -> API value, and the wallet each one settles into.
 PAYMENT_METHOD = {"momo": "mobile_money", "cash": "cash", "card": "card"}
+# Payment methods that mean "do not import". If ANY line in an order uses one of
+# these, the whole order is skipped — no sale is written for it.
+SKIP_PAYMENT_METHODS = {"cevr"}
 WALLET_FOR_METHOD = {
     "mobile_money": "Mobile money balance",
     "cash": "Petite caisse",
@@ -350,7 +355,14 @@ def record_sale_with_production(api: Api, payload: dict, matcher: Matcher,
 
 # ── spreadsheet → grouped orders ─────────────────────────────────────────────
 def read_orders(path: str, fallback_date: str, offset: str):
-    """Return OrderedDict keyed by (order_id, method) -> {meta, lines:[...]}."""
+    """Read the sheet into grouped orders.
+
+    Returns ``(orders, voided, skipped_orders)``:
+      * ``orders`` — OrderedDict keyed by ``(order_id, method)`` -> {meta, lines}
+      * ``voided`` — count of voided lines skipped
+      * ``skipped_orders`` — ``{order_id: METHOD}`` for orders dropped in full
+        because at least one line uses a skip-only payment method (e.g. CEVR).
+    """
     wb = openpyxl.load_workbook(path, data_only=True)
     ws = wb[SHEET_NAME] if SHEET_NAME in wb.sheetnames else wb.worksheets[0]
     rows = list(ws.iter_rows(values_only=True))
@@ -363,6 +375,7 @@ def read_orders(path: str, fallback_date: str, offset: str):
 
     orders: "OrderedDict[tuple, dict]" = OrderedDict()
     voided = 0
+    skipped_orders: dict = {}
     for r in rows[1:]:
         name = cell(r, "Product Name")
         order_id = cell(r, "Order Id")
@@ -372,6 +385,10 @@ def read_orders(path: str, fallback_date: str, offset: str):
             voided += 1
             continue
         method_raw = str(cell(r, "Payment Method") or "").strip().lower()
+        if method_raw in SKIP_PAYMENT_METHODS:
+            # Mark the order for a full skip; don't add this line anywhere.
+            skipped_orders[order_id] = method_raw.upper()
+            continue
         method = PAYMENT_METHOD.get(method_raw)
         key = (order_id, method or method_raw)
         if key not in orders:
@@ -387,7 +404,11 @@ def read_orders(path: str, fallback_date: str, offset: str):
             "qty": cell(r, "Qty"),
             "total": cell(r, "Total Price"),
         })
-    return orders, voided
+    # An order with ANY skip-method line is dropped in full — including any of its
+    # lines that happened to use a normal payment method.
+    for key in [k for k in orders if k[0] in skipped_orders]:
+        del orders[key]
+    return orders, voided, skipped_orders
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
@@ -419,7 +440,7 @@ def main() -> int:
     print(f"Pricing: {pricing}")
     print(f"Target : {args.base_url}\n")
 
-    orders, voided = read_orders(args.file, args.date, args.utc_offset)
+    orders, voided, skipped_orders = read_orders(args.file, args.date, args.utc_offset)
 
     api = Api(args.base_url, args.email, args.password)
     products = api.get_all("/catalog/products/")
@@ -430,7 +451,8 @@ def main() -> int:
         if needed not in wallets:
             sys.exit(f"Required wallet {needed!r} not found. Have: {list(wallets)}")
     print(f"Loaded {len(products)} products, {len(wallets)} wallets. "
-          f"{len(orders)} order/method groups ({voided} voided line(s) skipped).\n")
+          f"{len(orders)} order/method groups "
+          f"({voided} voided line(s), {len(skipped_orders)} CEVR order(s) skipped).\n")
 
     # Build sale payloads, resolving products + wallets.
     sales, unmatched_lines, bad_orders = [], [], []
@@ -506,6 +528,8 @@ def main() -> int:
     print("Summary")
     print(f"  sales planned        : {len(sales)}")
     print(f"  voided lines skipped : {voided}")
+    print(f"  CEVR orders skipped  : {len(skipped_orders)}"
+          + (f"  → {sorted(skipped_orders)}" if skipped_orders else ""))
     print(f"  unmatched lines      : {len(unmatched_lines)}")
     print(f"  orders skipped       : {len(bad_orders)}"
           + (f"  → {bad_orders}" if bad_orders else ""))

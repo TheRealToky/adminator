@@ -65,9 +65,9 @@ DEFAULT_EMAIL = os.environ.get("ADMINATOR_EMAIL", "admin@adminator.local")
 DEFAULT_PASSWORD = os.environ.get("ADMINATOR_PASSWORD", "admin12345")
 DEFAULT_FILE = os.environ.get(
     "PRODUCTION_XLSX",
-    r"D:\PC DISAINE\toky\Perso-D\red\procution\2026_06_16\pastry_production.xlsx",
+    r"D:\PC DISAINE\toky\Perso-D\red\procution\2026_06_26\pastry_production.xlsx",
 )
-DEFAULT_DATE = "2026-06-16"
+DEFAULT_DATE = "2026-06-26"
 
 # Sheet/column layout: A=Product, F=Production qty (0-indexed 0 and 5).
 SHEET_NAME = "Production"
