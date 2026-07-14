@@ -2,7 +2,8 @@
 r"""Monthly financial report for the pastry shop.
 
 Reports one calendar month (``--month YYYY-MM``, default the month of the latest
-day with sales) in three sections:
+day with sales), or the trailing 30 days ending on a given day (``--date
+YYYY-MM-DD``), in three sections:
 
 1. **Profit & Loss**
      * gross profit = sales − cost of goods sold
@@ -29,6 +30,7 @@ Usage
 -----
     python scripts/monthly_report.py
     python scripts/monthly_report.py --month 2026-06
+    python scripts/monthly_report.py --date 2026-07-10          # 06-11 → 07-10
     python scripts/monthly_report.py --month 2026-06 --labor-cost 1500000
     python scripts/monthly_report.py --month 2026-06 --json
 """
@@ -38,8 +40,12 @@ import sys
 
 import report_common as rc
 
+# Length of the rolling window used by ``--date``. Chosen to approximate a month
+# so the labour cost and ratios stay comparable to the calendar-month mode.
+TRAILING_DAYS = 30
 
-def build_report(store, start, end, labor_cost):
+
+def build_report(store, start, end, labor_cost, period_label=None):
     sales = rc.sales_between(store.sales(), start, end)
     income_txns = rc.transactions_between(store.transactions(), start, end, direction="income")
     expense_txns = rc.transactions_between(store.transactions(), start, end, direction="expense")
@@ -80,9 +86,16 @@ def build_report(store, start, end, labor_cost):
     money_out = operating_expenses
     net_cash_flow = money_in - money_out
 
+    # A trailing window can straddle two calendar months, so ``month`` only
+    # carries a value in calendar-month mode; ``period`` always describes the
+    # span that was actually measured.
     return {
-        "month": f"{start:%Y-%m}",
-        "period": {"start": start.isoformat(), "end": end.isoformat()},
+        "month": f"{start:%Y-%m}" if period_label is None else None,
+        "period": {
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "label": period_label or f"Month: {start:%Y-%m}",
+        },
         "profit_and_loss": {
             "sales": sales_total,
             "other_income": income_total,
@@ -118,8 +131,8 @@ def build_report(store, start, end, labor_cost):
 def render(report: dict, doc, currency: str) -> None:
     M = lambda v: rc.money(v, currency)
 
-    doc.header("MONTHLY REPORT",
-               f"Month: {report['month']}  ({report['period']['start']} → {report['period']['end']})")
+    p = report["period"]
+    doc.header("MONTHLY REPORT", f"{p['label']}  ({p['start']} → {p['end']})")
 
     pl = report["profit_and_loss"]
     doc.section("1. Profit & Loss")
@@ -161,7 +174,10 @@ def render(report: dict, doc, currency: str) -> None:
 def main() -> int:
     rc.reconfigure_stdio()
     p = rc.base_arg_parser("Monthly financial report for Adminator.")
-    p.add_argument("--month", help="Month to report (YYYY-MM). Default: month of the latest day with sales.")
+    period = p.add_mutually_exclusive_group()
+    period.add_argument("--month", help="Month to report (YYYY-MM). Default: month of the latest day with sales.")
+    period.add_argument("--date", metavar="YYYY-MM-DD",
+                        help=f"Report the trailing {TRAILING_DAYS} days ending on (and including) this day.")
     p.add_argument("--labor-cost", type=str, default=None,
                    help="Labour cost for the month (else env ADMINATOR_LABOR_COST_MONTHLY).")
     args = p.parse_args()
@@ -169,7 +185,11 @@ def main() -> int:
     api = rc.Api(args.base_url, args.email, args.password)
     store = rc.DataStore(api)
 
-    if args.month:
+    period_label = None
+    if args.date:
+        start, end = rc.week_bounds(rc.parse_date(args.date), TRAILING_DAYS)
+        period_label = f"Period: trailing {TRAILING_DAYS} days"
+    elif args.month:
         start, end = rc.parse_month(args.month)
     else:
         all_sales = store.sales()
@@ -179,7 +199,7 @@ def main() -> int:
         start, end = rc.month_bounds(latest.year, latest.month)
 
     labor_cost = rc.resolve_optional(args.labor_cost, "ADMINATOR_LABOR_COST_MONTHLY")
-    report = build_report(store, start, end, labor_cost)
+    report = build_report(store, start, end, labor_cost, period_label)
 
     if args.json:
         rc.emit(report)
