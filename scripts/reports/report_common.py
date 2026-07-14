@@ -66,6 +66,12 @@ Environment variables honoured by the report scripts:
 ZERO = Decimal("0")
 CENTS = Decimal("0.01")
 
+#: Name of the wallet that backs the physical till. Cash-drawer reconciliation
+#: only cares about expenses paid out of *this* wallet, not every "cash"
+#: payment_method row (an expense can be tagged cash but paid from elsewhere,
+#: or vice versa) — see import_sales.py's WALLET_FOR_METHOD mapping.
+CASH_DRAWER_WALLET = "Petite caisse"
+
 
 # ── numeric helpers ──────────────────────────────────────────────────────────
 def D(value) -> Decimal:
@@ -354,6 +360,26 @@ def expense_total(expenses: list, expense_txns: list) -> Decimal:
     return total
 
 
+#: Expense category used by (now-disabled) automatic inventory write-offs. Such
+#: rows are a *non-cash* accounting move — wasted stock, no money left the till —
+#: so the reports keep them out of expense / cash totals and surface them
+#: separately. Historic data still carries these rows; new waste creates none.
+INVENTORY_WRITE_OFF_CATEGORY = "Inventory write-off"
+
+
+def is_write_off(expense: dict) -> bool:
+    """True when an expense row is an inventory write-off (non-cash waste)."""
+    return expense.get("category_name") == INVENTORY_WRITE_OFF_CATEGORY
+
+
+def split_write_offs(expenses: list) -> tuple[list, list]:
+    """Partition expense rows into ``(real_expenses, write_offs)``."""
+    real, write_offs = [], []
+    for e in expenses:
+        (write_offs if is_write_off(e) else real).append(e)
+    return real, write_offs
+
+
 def transaction_total(transactions: list) -> Decimal:
     return sum((D(t["amount"]) for t in transactions), ZERO)
 
@@ -445,6 +471,123 @@ def emit(payload: dict) -> None:
     print(json.dumps(payload, indent=2, default=_json_default))
 
 
+# ── document sinks (terminal + Word) ─────────────────────────────────────────
+# Each report's ``render()`` writes to one of these sinks instead of calling
+# ``print`` directly. ``TerminalDoc`` reproduces the original fixed-width text
+# byte-for-byte (it just forwards to the helpers above); ``DocxDoc`` builds an
+# equivalent Word document. Both expose the same vocabulary — ``header``,
+# ``section``, ``kv``, ``table`` and ``text`` — so a single ``render`` serves
+# both. Call ``save(path)`` at the end (a no-op for the terminal).
+class TerminalDoc:
+    """Sink that prints the classic fixed-width terminal report."""
+
+    def header(self, title: str, subtitle: str = "") -> None:
+        header(title, subtitle)
+
+    def section(self, title: str) -> None:
+        section(title)
+
+    def kv(self, label: str, value: str, width: int = 26) -> None:
+        kv(label, value, width)
+
+    def table(self, headers, rows, aligns=None) -> None:
+        table(headers, rows, aligns)
+
+    def text(self, line: str = "") -> None:
+        print(line)
+
+    def save(self, path: str) -> None:  # output already streamed to stdout
+        pass
+
+
+class DocxDoc:
+    """Sink that builds a Word (.docx) document mirroring the report layout.
+
+    Consecutive :meth:`kv` calls are grouped into a borderless two-column table
+    (label / value); :meth:`table` renders as a bordered table with a bold
+    header row and right-aligned numeric columns. Requires ``python-docx``
+    (``pip install python-docx``); the dependency is only imported here, so the
+    text and JSON outputs never need it.
+    """
+
+    def __init__(self, currency: str = CURRENCY):
+        try:
+            from docx import Document
+        except ModuleNotFoundError:
+            sys.exit(
+                "The --docx option needs the python-docx package.\n"
+                "Install it with:  pip install python-docx"
+            )
+        self.currency = currency
+        self._doc = Document()
+        self._kv = None  # the two-column table currently collecting kv() rows
+
+    @staticmethod
+    def _bold(cell) -> None:
+        for run in cell.paragraphs[0].runs:
+            run.bold = True
+
+    def _flush_kv(self) -> None:
+        self._kv = None
+
+    def header(self, title: str, subtitle: str = "") -> None:
+        self._flush_kv()
+        self._doc.add_heading(title.title(), level=0)
+        if subtitle:
+            p = self._doc.add_paragraph(subtitle)
+            if p.runs:
+                p.runs[0].italic = True
+
+    def section(self, title: str) -> None:
+        self._flush_kv()
+        self._doc.add_heading(title, level=1)
+
+    def kv(self, label: str, value: str, width: int = 26) -> None:
+        if self._kv is None:
+            self._kv = self._doc.add_table(rows=0, cols=2)
+        cells = self._kv.add_row().cells
+        cells[0].text = label.strip()
+        cells[1].text = str(value)
+        self._bold(cells[0])
+
+    def table(self, headers, rows, aligns=None) -> None:
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+        self._flush_kv()
+        if not rows:
+            self._doc.add_paragraph("(none)")
+            return
+        aligns = aligns or ["l"] * len(headers)
+        t = self._doc.add_table(rows=1, cols=len(headers))
+        try:
+            t.style = "Light Grid Accent 1"
+        except KeyError:
+            t.style = "Table Grid"
+        for i, h in enumerate(headers):
+            t.rows[0].cells[i].text = h
+            self._bold(t.rows[0].cells[i])
+        for row in rows:
+            cells = t.add_row().cells
+            for i, value in enumerate(row):
+                cells[i].text = str(value)
+                if aligns[i] == "r":
+                    cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    def text(self, line: str = "") -> None:
+        # Blank lines are spacing in the terminal; Word handles that itself.
+        if not line.strip():
+            return
+        self._flush_kv()
+        stripped = line.strip()
+        p = self._doc.add_paragraph(stripped)
+        if stripped.endswith(":") and p.runs:  # a "Foo:" sub-label
+            p.runs[0].bold = True
+
+    def save(self, path: str) -> None:
+        self._flush_kv()
+        self._doc.save(path)
+
+
 def base_arg_parser(description: str) -> argparse.ArgumentParser:
     """An argument parser pre-seeded with the connection + output flags every
     report shares."""
@@ -458,4 +601,6 @@ def base_arg_parser(description: str) -> argparse.ArgumentParser:
     p.add_argument("--password", default=DEFAULT_PASSWORD)
     p.add_argument("--currency", default=CURRENCY, help="Currency code shown next to amounts.")
     p.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of text.")
+    p.add_argument("--docx", metavar="PATH", default=None,
+                   help="Write the report to a Word .docx file at PATH (needs python-docx).")
     return p
