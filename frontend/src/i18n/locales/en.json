@@ -75,7 +75,8 @@
     "invoices": "Invoices",
     "budgets": "Budgets",
     "assets": "Assets",
-    "staff": "Staff"
+    "staff": "Staff",
+    "ledger": "Ledger"
   },
   "topbar": {
     "profile": "Profile",
@@ -1146,6 +1147,71 @@
       "lowStock": "Low stock",
       "active": "Active",
       "notes": "Notes"
+    }
+  },
+  "ledger": {
+    "title": "General ledger",
+    "subtitle": "Double-entry accounts, journal and financial statements.",
+    "tabs": {
+      "trial-balance": "Trial balance",
+      "income-statement": "Income statement",
+      "balance-sheet": "Balance sheet",
+      "accounts": "Chart of accounts",
+      "journal": "Journal",
+      "periods": "Periods"
+    },
+    "balanced": "Balanced",
+    "notBalanced": "Out of balance",
+    "asOf": "As of",
+    "from": "From",
+    "to": "To",
+    "totals": "Totals",
+    "difference": "Difference",
+    "cols": {
+      "code": "Code",
+      "account": "Account",
+      "type": "Type",
+      "debit": "Debit",
+      "credit": "Credit",
+      "normal": "Normal side",
+      "postable": "Postable"
+    },
+    "income": "Income",
+    "totalIncome": "Total income",
+    "cogs": "Cost of goods sold",
+    "grossProfit": "Gross profit",
+    "expenses": "Expenses",
+    "totalExpenses": "Total expenses",
+    "netProfit": "Net profit",
+    "assets": "Assets",
+    "totalAssets": "Total assets",
+    "liabilities": "Liabilities",
+    "totalLiabilities": "Total liabilities",
+    "equity": "Equity",
+    "currentEarnings": "Current-year earnings",
+    "totalEquity": "Total equity",
+    "totalLiabEquity": "Total liabilities & equity",
+    "noEntries": "No journal entries yet.",
+    "reversed": "Reversed",
+    "system": "Auto",
+    "newEntry": "New entry",
+    "postEntry": "Post entry",
+    "entryPosted": "Journal entry posted.",
+    "entryFailed": "Could not post the entry.",
+    "date": "Date",
+    "memo": "Memo",
+    "memoPlaceholder": "What is this entry for?",
+    "addLine": "Add line",
+    "mustBalance": "Debits and credits must be equal.",
+    "noPeriods": "No accounting periods yet.",
+    "closePeriod": "Close",
+    "reopenPeriod": "Reopen",
+    "periodClosed": "Period closed.",
+    "periodReopened": "Period reopened.",
+    "periodStatus": {
+      "open": "Open",
+      "closed": "Closed",
+      "locked": "Locked"
     }
   }
 }

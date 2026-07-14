@@ -1,9 +1,10 @@
 import { api } from './client';
 import type {
-  Asset, Budget, Choice, DashboardOverview, Expense, ExpenseCategory, Invoice, LoginResponse,
-  Paginated, Product, ProductCategory, ProductionRun, RawMaterial, RecipeItem,
-  Sale, StockItem, StockMovement, Supplier, Transaction, TransactionCategory, User,
-  Wallet, WalletEntry, WalletLedgerItem,
+  AccountingPeriod, Asset, BalanceSheet, Budget, Choice, DashboardOverview, Expense,
+  ExpenseCategory, IncomeStatement, Invoice, JournalEntry, LedgerAccount, LoginResponse,
+  ManualJournalEntryInput, Paginated, Product, ProductCategory, ProductionRun, RawMaterial,
+  RecipeItem, Sale, StockItem, StockMovement, Supplier, Transaction, TransactionCategory,
+  TrialBalance, User, Wallet, WalletEntry, WalletLedgerItem,
 } from './types';
 
 // ── Auth ──────────────────────────────────────────────────────────────────
@@ -265,6 +266,38 @@ export const finance = {
   walletEntries: {
     list: (params = {}) =>
       api.get<Paginated<WalletEntry>>('/finance/wallet-entries/', { params }).then((r) => r.data),
+  },
+};
+
+// ── Ledger (double-entry general ledger, read-only) ─────────────────────────
+export const ledger = {
+  accounts: {
+    list: (params: Record<string, unknown> = {}) =>
+      api.get<Paginated<LedgerAccount>>('/ledger/accounts/', { params }).then((r) => r.data),
+  },
+  journalEntries: {
+    list: (params: Record<string, unknown> = {}) =>
+      api.get<Paginated<JournalEntry>>('/ledger/journal-entries/', { params }).then((r) => r.data),
+    get: (id: string) =>
+      api.get<JournalEntry>(`/ledger/journal-entries/${id}/`).then((r) => r.data),
+    createManual: (payload: ManualJournalEntryInput) =>
+      api.post<JournalEntry>('/ledger/journal-entries/manual/', payload).then((r) => r.data),
+  },
+  periods: {
+    list: (params: Record<string, unknown> = {}) =>
+      api.get<Paginated<AccountingPeriod>>('/ledger/periods/', { params }).then((r) => r.data),
+    close: (id: string) =>
+      api.post<AccountingPeriod>(`/ledger/periods/${id}/close/`).then((r) => r.data),
+    reopen: (id: string) =>
+      api.post<AccountingPeriod>(`/ledger/periods/${id}/reopen/`).then((r) => r.data),
+  },
+  reports: {
+    trialBalance: (params: { as_of?: string } = {}) =>
+      api.get<TrialBalance>('/ledger/reports/trial-balance/', { params }).then((r) => r.data),
+    incomeStatement: (params: { start?: string; end?: string } = {}) =>
+      api.get<IncomeStatement>('/ledger/reports/income-statement/', { params }).then((r) => r.data),
+    balanceSheet: (params: { as_of?: string } = {}) =>
+      api.get<BalanceSheet>('/ledger/reports/balance-sheet/', { params }).then((r) => r.data),
   },
 };
 

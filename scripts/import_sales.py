@@ -66,9 +66,9 @@ DEFAULT_EMAIL = os.environ.get("ADMINATOR_EMAIL", "admin@adminator.local")
 DEFAULT_PASSWORD = os.environ.get("ADMINATOR_PASSWORD", "admin12345")
 DEFAULT_FILE = os.environ.get(
     "SALES_XLSX",
-    r"D:\PC DISAINE\toky\Perso-D\red\sales\img_extraction\pastry_sales_2026-06-26.xlsx"
+    r"D:\PC DISAINE\toky\Perso-D\red\sales\img_extraction\2026-07\pastry_sales_2026-07-05.xlsx"
 )
-DEFAULT_DATE = "2026-06-26"        # fallback if a row has no Date
+DEFAULT_DATE = "2026-07-05"        # fallback if a row has no Date
 DEFAULT_OFFSET = "+02:00"          # Africa/Kigali (no DST)
 SHEET_NAME = "Sales Lines"
 

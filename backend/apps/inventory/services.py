@@ -15,7 +15,9 @@ from apps.core.exceptions import InsufficientStock
 
 from .models import ItemKind, MovementReason, StockItem, StockMovement
 
-#: Auto-managed expense category booking inventory write-offs against P&L.
+#: Expense category that historically booked inventory write-offs against P&L.
+#: Waste no longer auto-creates expenses (see :func:`record_waste`); the name is
+#: kept so existing write-off expenses and the reports that surface them line up.
 INVENTORY_WRITE_OFF_CATEGORY = "Inventory write-off"
 
 if TYPE_CHECKING:
@@ -112,14 +114,16 @@ def record_waste(
     reference: str = "",
     user: "User | None" = None,
 ) -> tuple[StockMovement, "Expense | None"]:
-    """Write off stock as waste/loss AND book the cost as a P&L expense.
+    """Write off stock as waste/loss.
 
-    Returns (movement, expense). `expense` is None only when the item's
-    per-unit cost is zero (nothing meaningful to charge).
+    Decrements the item's stock and records a WASTE movement. Waste does **not**
+    auto-book a P&L expense: a write-off is a non-cash inventory event, so the
+    finance side (if any is wanted) is left to manual entry. Wasted quantity is
+    still visible through the WASTE movement and the reports' waste metrics.
+
+    The return value keeps its ``(movement, expense)`` shape so existing callers
+    (the write-off API endpoint) keep working — ``expense`` is always ``None``.
     """
-    # Local import to avoid a finance→inventory→finance cycle at module load.
-    from apps.finance.models import Expense, ExpenseCategory
-
     quantity = Decimal(quantity)
     if quantity <= 0:
         raise ValueError("Waste quantity must be positive.")
@@ -127,12 +131,8 @@ def record_waste(
         raise ValueError("Pass exactly one of `product` or `raw_material`.")
 
     if product is not None:
-        unit_cost = Decimal(product.production_cost or 0)
-        item_name = product.name
         stock = ensure_stock_item(product=product)
     else:
-        unit_cost = Decimal(raw_material.unit_cost or 0)
-        item_name = raw_material.name
         stock = ensure_stock_item(raw_material=raw_material)
 
     movement = adjust_stock(
@@ -144,22 +144,4 @@ def record_waste(
         user=user,
     )
 
-    write_off_amount = (unit_cost * quantity).quantize(Decimal("0.01"))
-    expense: "Expense | None" = None
-    if write_off_amount > 0:
-        category, _ = ExpenseCategory.objects.get_or_create(
-            name=INVENTORY_WRITE_OFF_CATEGORY,
-            defaults={
-                "description": "Stock written off as waste, spoilage, expiry or loss.",
-            },
-        )
-        expense = Expense.objects.create(
-            category=category,
-            title=f"Write-off: {item_name}",
-            amount=write_off_amount,
-            reference=reference or f"WASTE-{movement.id}",
-            notes=note,
-            recorded_by=user,
-        )
-
-    return movement, expense
+    return movement, None

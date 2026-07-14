@@ -18,6 +18,7 @@ api_v1_patterns = [
     path("finance/", include("apps.finance.urls")),
     path("analytics/", include("apps.analytics.urls")),
     path("processed-materials/", include("apps.processed_materials.urls")),
+    path("ledger/", include("apps.ledger.urls")),
 ]
 
 urlpatterns = [

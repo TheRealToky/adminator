@@ -65,6 +65,7 @@ LOCAL_APPS = [
     "apps.finance",
     "apps.analytics",
     "apps.processed_materials",
+    "apps.ledger",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -196,6 +197,12 @@ BUSINESS = {
     "TIMEZONE": env("BUSINESS_TIMEZONE", "Africa/Kigali"),
     "LOCALE": env("BUSINESS_LOCALE", "en-RW"),
 }
+
+# ── Ledger (double-entry GL) ──────────────────────────────────────────────
+# Shadow mode: domain events post to the GL alongside the legacy aggregates,
+# but a posting error is logged rather than rolled back into the caller.
+LEDGER_POSTING_ENABLED = env_bool("LEDGER_POSTING_ENABLED", default=True)
+LEDGER_SHADOW_MODE = env_bool("LEDGER_SHADOW_MODE", default=True)
 
 # ── Logging ───────────────────────────────────────────────────────────────
 LOGGING = {

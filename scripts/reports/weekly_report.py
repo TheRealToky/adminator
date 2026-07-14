@@ -135,55 +135,55 @@ def build_report(store, end, avg_weeks, labor_hours, complaints, delivery_delays
     }
 
 
-def render(report: dict, currency: str, top: int) -> None:
+def render(report: dict, doc, currency: str, top: int) -> None:
     M = lambda v: rc.money(v, currency)
 
-    rc.header("WEEKLY REPORT", f"Week: {report['week_start']} → {report['week_end']}")
+    doc.header("WEEKLY REPORT", f"Week: {report['week_start']} → {report['week_end']}")
 
     r = report["revenue_performance"]
-    rc.section("1. Revenue performance")
-    rc.kv("This week", M(r["this_week"]))
-    rc.kv("Previous week", M(r["previous_week"]))
-    rc.kv(f"Average (last {r['avg_weeks']} wks)", M(r["weekly_average"]))
-    rc.kv("Week-on-week change", rc.percent(r["wow_change_pct"]))
-    rc.kv("vs weekly average", rc.percent(r["vs_average_pct"]))
+    doc.section("1. Revenue performance")
+    doc.kv("This week", M(r["this_week"]))
+    doc.kv("Previous week", M(r["previous_week"]))
+    doc.kv(f"Average (last {r['avg_weeks']} wks)", M(r["weekly_average"]))
+    doc.kv("Week-on-week change", rc.percent(r["wow_change_pct"]))
+    doc.kv("vs weekly average", rc.percent(r["vs_average_pct"]))
 
-    rc.section("2. Product performance")
+    doc.section("2. Product performance")
     rows = report["product_performance"]
     shown = rows[:top] if top else rows
-    rc.table(
+    doc.table(
         ["Product", "Units", "Revenue", "Margin %"],
         [[x["product"], rc.qty(x["units"]), M(x["revenue"]), rc.percent(x["margin_pct"])]
          for x in shown],
         aligns=["l", "r", "r", "r"],
     )
     if top and len(rows) > top:
-        print(f"  … {len(rows) - top} more product(s) (use --top 0 to show all)")
+        doc.text(f"  … {len(rows) - top} more product(s) (use --top 0 to show all)")
 
     c = report["cost_tracking"]
-    rc.section("3. Cost tracking")
-    rc.kv("Sales (revenue)", M(c["sales"]))
-    rc.kv("Ingredients cost (COGS)", M(c["ingredients_cost"]))
-    rc.kv("Ingredients ÷ sales", rc.percent(c["cogs_to_sales_pct"]))
+    doc.section("3. Cost tracking")
+    doc.kv("Sales (revenue)", M(c["sales"]))
+    doc.kv("Ingredients cost (COGS)", M(c["ingredients_cost"]))
+    doc.kv("Ingredients ÷ sales", rc.percent(c["cogs_to_sales_pct"]))
 
     k = report["operations_kpis"]
-    rc.section("4. Operations KPIs")
-    rc.kv("Units produced", rc.qty(k["units_produced"]))
-    rc.kv("Units sold", rc.qty(k["units_sold"]))
-    rc.kv("Waste rate", rc.percent(k["waste_rate_pct"]))
-    rc.kv("Production accuracy", rc.percent(k["production_accuracy_pct"]))
+    doc.section("4. Operations KPIs")
+    doc.kv("Units produced", rc.qty(k["units_produced"]))
+    doc.kv("Units sold", rc.qty(k["units_sold"]))
+    doc.kv("Waste rate", rc.percent(k["waste_rate_pct"]))
+    doc.kv("Production accuracy", rc.percent(k["production_accuracy_pct"]))
     delays = "n/a (not tracked — pass --delivery-delays)" if k["delivery_delays"] is None \
         else f"{rc.num(k['delivery_delays'])} late of {rc.num(k['delivery_receipts'])} delivery receipt(s)"
-    rc.kv("Delivery delays", delays)
+    doc.kv("Delivery delays", delays)
     if k["employee_hours_per_1k_revenue"] is not None:
-        rc.kv("Employee hours / 1,000 rev",
-              f"{rc.num(k['employee_hours_per_1k_revenue'], 2)} hrs  ({rc.num(k['labor_hours'])} hrs total)")
+        doc.kv("Employee hours / 1,000 rev",
+               f"{rc.num(k['employee_hours_per_1k_revenue'], 2)} hrs  ({rc.num(k['labor_hours'])} hrs total)")
     else:
-        rc.kv("Employee hours / 1,000 rev", "n/a (pass --labor-hours)")
-    rc.kv("Customer complaints",
-          rc.num(k["customer_complaints"]) if k["customer_complaints"] is not None
-          else "n/a (pass --complaints)")
-    print()
+        doc.kv("Employee hours / 1,000 rev", "n/a (pass --labor-hours)")
+    doc.kv("Customer complaints",
+           rc.num(k["customer_complaints"]) if k["customer_complaints"] is not None
+           else "n/a (pass --complaints)")
+    doc.text()
 
 
 def main() -> int:
@@ -220,8 +220,13 @@ def main() -> int:
 
     if args.json:
         rc.emit(report)
+    elif args.docx:
+        doc = rc.DocxDoc(args.currency)
+        render(report, doc, args.currency, args.top)
+        doc.save(args.docx)
+        print(f"Wrote {args.docx}")
     else:
-        render(report, args.currency, args.top)
+        render(report, rc.TerminalDoc(), args.currency, args.top)
     return 0
 
 

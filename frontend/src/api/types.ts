@@ -410,3 +410,124 @@ export interface DashboardOverview {
     overdue_total: string;
   };
 }
+
+// ── Ledger (double-entry general ledger) ────────────────────────────────────
+export interface LedgerAccount {
+  id: UUID;
+  code: string;
+  name: string;
+  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+  type_display: string;
+  subtype: string;
+  parent: UUID | null;
+  parent_code: string | null;
+  is_postable: boolean;
+  is_active: boolean;
+  normal_balance: 'debit' | 'credit';
+  currency: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JournalLine {
+  id: UUID;
+  account: UUID;
+  account_code: string;
+  account_name: string;
+  debit: string;
+  credit: string;
+  memo: string;
+  wallet: UUID | null;
+}
+
+export interface JournalEntry {
+  id: UUID;
+  date: string;
+  period: UUID;
+  period_label: string;
+  memo: string;
+  source_type: string;
+  source_id: string;
+  event: string;
+  status: 'posted' | 'reversed';
+  is_system: boolean;
+  reversal_of: UUID | null;
+  lines: JournalLine[];
+  total_debit: string;
+  total_credit: string;
+  is_balanced: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ManualJournalLineInput {
+  account: UUID;
+  debit?: string;
+  credit?: string;
+  memo?: string;
+}
+
+export interface ManualJournalEntryInput {
+  date: string;
+  memo?: string;
+  lines: ManualJournalLineInput[];
+}
+
+export interface AccountingPeriod {
+  id: UUID;
+  start_date: string;
+  label: string;
+  status: 'open' | 'closed' | 'locked';
+  is_postable: boolean;
+  closed_at: string | null;
+}
+
+export interface TrialBalanceLine {
+  account_code: string;
+  account_name: string;
+  type: string;
+  debit: string;
+  credit: string;
+  balance: string;
+}
+
+export interface TrialBalance {
+  as_of: string;
+  lines: TrialBalanceLine[];
+  total_debit: string;
+  total_credit: string;
+  difference: string;
+  balanced: boolean;
+}
+
+export interface StatementLine {
+  account_code: string;
+  account_name: string;
+  amount: string;
+}
+
+export interface IncomeStatement {
+  start: string;
+  end: string;
+  income: StatementLine[];
+  total_income: string;
+  cost_of_goods_sold: string;
+  gross_profit: string;
+  expenses: StatementLine[];
+  total_expenses: string;
+  net_profit: string;
+}
+
+export interface BalanceSheet {
+  as_of: string;
+  assets: StatementLine[];
+  total_assets: string;
+  liabilities: StatementLine[];
+  total_liabilities: string;
+  equity: StatementLine[];
+  current_year_earnings: string;
+  total_equity: string;
+  total_liabilities_and_equity: string;
+  balanced: boolean;
+}

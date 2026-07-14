@@ -52,6 +52,18 @@ class Expense(BaseModel):
         blank=True,
         related_name="expenses",
     )
+    on_credit = models.BooleanField(
+        default=False,
+        help_text=(
+            "Supplier bill bought on credit: the expense is recognized now but "
+            "credits Accounts Payable instead of a wallet until it is settled."
+        ),
+    )
+    settled_at = models.DateField(
+        null=True,
+        blank=True,
+        help_text="When an on-credit bill was paid. Drives the A/P settlement entry.",
+    )
     reference = models.CharField(max_length=80, blank=True)
     notes = models.TextField(blank=True)
     recorded_by = models.ForeignKey(
@@ -69,6 +81,11 @@ class Expense(BaseModel):
         related_name="expenses",
         help_text="Wallet the money was paid out of. Drives that wallet's balance.",
     )
+
+    @property
+    def is_outstanding_bill(self) -> bool:
+        """An on-credit supplier bill that has not been settled yet (open A/P)."""
+        return self.on_credit and self.settled_at is None
 
     class Meta:
         ordering = ["-incurred_on", "-created_at"]

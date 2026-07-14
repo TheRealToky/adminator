@@ -56,7 +56,7 @@ def test_adjust_stock_below_zero_blocked(flour, admin_user):
 
 
 @pytest.mark.django_db
-def test_record_waste_product_decrements_and_books_expense(croissant, admin_user):
+def test_record_waste_product_decrements_without_expense(croissant, admin_user):
     stock = services.ensure_stock_item(product=croissant)
     services.adjust_stock(
         stock_item=stock, quantity_delta=Decimal("30"),
@@ -72,14 +72,12 @@ def test_record_waste_product_decrements_and_books_expense(croissant, admin_user
     assert stock.quantity == Decimal("25.0000")
     assert movement.reason == MovementReason.WASTE
     assert movement.quantity_delta == Decimal("-5.0000")
-    assert expense is not None
-    assert expense.amount == Decimal("2000.00")  # 5 × 400
-    assert expense.category.name == services.INVENTORY_WRITE_OFF_CATEGORY
-    assert expense.recorded_by == admin_user
+    # Waste is a non-cash event now: no P&L expense is booked.
+    assert expense is None
 
 
 @pytest.mark.django_db
-def test_record_waste_raw_material_uses_unit_cost(flour, admin_user):
+def test_record_waste_raw_material_decrements_without_expense(flour, admin_user):
     services.receive_raw_material(
         raw_material=flour, quantity=Decimal("500"), user=admin_user
     )
@@ -89,12 +87,11 @@ def test_record_waste_raw_material_uses_unit_cost(flour, admin_user):
     )
 
     assert movement.quantity_delta == Decimal("-120.0000")
-    assert expense is not None
-    assert expense.amount == Decimal("120.00")  # 120 × 1
+    assert expense is None
 
 
 @pytest.mark.django_db
-def test_record_waste_reuses_write_off_category(croissant, admin_user):
+def test_record_waste_never_creates_expense(croissant, admin_user):
     stock = services.ensure_stock_item(product=croissant)
     services.adjust_stock(
         stock_item=stock, quantity_delta=Decimal("10"),
@@ -104,34 +101,11 @@ def test_record_waste_reuses_write_off_category(croissant, admin_user):
     services.record_waste(product=croissant, quantity=Decimal("2"), user=admin_user)
     services.record_waste(product=croissant, quantity=Decimal("3"), user=admin_user)
 
-    assert ExpenseCategory.objects.filter(
+    # Waste no longer auto-creates the (legacy) category or any expense rows.
+    assert not ExpenseCategory.objects.filter(
         name=services.INVENTORY_WRITE_OFF_CATEGORY
-    ).count() == 1
-    assert Expense.objects.filter(
-        category__name=services.INVENTORY_WRITE_OFF_CATEGORY
-    ).count() == 2
-
-
-@pytest.mark.django_db
-def test_record_waste_skips_expense_when_cost_is_zero(admin_user):
-    cat = ProductCategory.objects.create(name="Freebies")
-    freebie = Product.objects.create(
-        sku="PR-T-FR", name="Free sample", category=cat,
-        unit="unit", selling_price=Decimal("0"),
-        production_cost=Decimal("0"),
-    )
-    stock = services.ensure_stock_item(product=freebie)
-    services.adjust_stock(
-        stock_item=stock, quantity_delta=Decimal("5"),
-        reason=MovementReason.ADJUSTMENT_IN, user=admin_user,
-    )
-
-    movement, expense = services.record_waste(
-        product=freebie, quantity=Decimal("2"), user=admin_user
-    )
-
-    assert movement.reason == MovementReason.WASTE
-    assert expense is None
+    ).exists()
+    assert Expense.objects.count() == 0
 
 
 @pytest.mark.django_db

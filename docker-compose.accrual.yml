@@ -1,0 +1,78 @@
+# ══════════════════════════════════════════════════════════════════════════
+#  Adminator — ACCRUAL sandbox stack
+#
+#  A third, fully isolated compose project for building the double-entry
+#  general ledger. It reuses the base service definitions but overrides every
+#  shared resource so it CANNOT collide with the main (`adminator`) or scratch
+#  (`adminator-scratch`) stacks:
+#
+#    • project name ....... adminator-accrual
+#    • containers ......... adminator-accrual-*
+#    • database volume .... adminator_accrual_postgres_data (separate data)
+#    • network ............ adminator-accrual-net
+#    • host ports ......... postgres 5434, backend 8002, frontend 5175, jupyter 8890
+#
+#  Run with BOTH files so the base definitions are inherited:
+#
+#    docker compose -f docker-compose.yml -f docker-compose.accrual.yml up -d
+#
+#  (A convenience wrapper lives in scripts/accrual.sh / scripts/accrual.ps1.)
+# ══════════════════════════════════════════════════════════════════════════
+name: adminator-accrual
+
+services:
+  postgres:
+    container_name: adminator-accrual-postgres
+    env_file: .env.accrual
+    # Pin the init values explicitly so the sandbox never depends on which
+    # .env compose happens to interpolate. The DB name matches the other stacks
+    # ("adminator"); isolation comes from the separate volume/container/port.
+    environment:
+      POSTGRES_DB: adminator
+      POSTGRES_USER: adminator
+      POSTGRES_PASSWORD: change-me-in-production
+    ports: !override
+      - "5434:5432"
+    volumes: !override
+      - postgres_data_accrual:/var/lib/postgresql/data
+
+  backend:
+    container_name: adminator-accrual-backend
+    env_file: .env.accrual
+    ports: !override
+      - "8002:8000"
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py bootstrap_admin &&
+        python manage.py seed --if-empty &&
+        python manage.py seed_processed_materials --if-empty &&
+        python manage.py seed_chart_of_accounts &&
+        python manage.py resync_ledger &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+  frontend:
+    container_name: adminator-accrual-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8002/api/v1
+        VITE_APP_NAME: Adminator (accrual)
+    ports: !override
+      - "5175:80"
+
+  jupyter:
+    container_name: adminator-accrual-jupyter
+    env_file: .env.accrual
+    ports: !override
+      - "8890:8888"
+
+volumes:
+  postgres_data_accrual:
+    name: adminator_accrual_postgres_data
+
+networks:
+  adminator-net:
+    name: adminator-accrual-net

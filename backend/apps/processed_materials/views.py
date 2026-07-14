@@ -103,7 +103,11 @@ class ProcessedMaterialStockViewSet(mixins.ListModelMixin,
 
     @action(detail=False, methods=["post"], url_path="write-off")
     def write_off(self, request):
-        """Record waste/loss: decrements stock AND books a finance Expense."""
+        """Record waste/loss: decrements stock (no finance Expense is booked).
+
+        The response still carries an ``expense`` key (always ``null`` now) for
+        backwards compatibility.
+        """
         ser = ProcessedMaterialStockWriteOffSerializer(
             data=request.data, context={"request": request}
         )

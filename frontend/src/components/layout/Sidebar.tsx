@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingBag, Package, Boxes, Factory,
   Receipt, FileText, Users2, Building2, Tag, ChefHat,
-  ArrowLeftRight, Building, Wallet, X,
+  ArrowLeftRight, Building, Wallet, BookOpen, X,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -40,6 +40,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     { to: '/invoices', label: t('sidebar.invoices'), icon: FileText },
     { to: '/budgets', label: t('sidebar.budgets'), icon: Receipt },
     { to: '/assets', label: t('sidebar.assets'), icon: Building },
+    { to: '/ledger', label: t('sidebar.ledger'), icon: BookOpen },
     { section: t('sidebar.sections.admin'), adminOnly: true },
     { to: '/users', label: t('sidebar.staff'), icon: Users2, adminOnly: true },
   ];

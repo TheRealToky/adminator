@@ -75,7 +75,8 @@
     "invoices": "Factures",
     "budgets": "Budgets",
     "assets": "Immobilisations",
-    "staff": "Personnel"
+    "staff": "Personnel",
+    "ledger": "Grand livre"
   },
   "topbar": {
     "profile": "Profil",
@@ -1112,6 +1113,71 @@
       "lowStock": "Stock faible",
       "active": "Actif",
       "notes": "Notes"
+    }
+  },
+  "ledger": {
+    "title": "Grand livre",
+    "subtitle": "Comptes en partie double, journal et états financiers.",
+    "tabs": {
+      "trial-balance": "Balance de vérification",
+      "income-statement": "Compte de résultat",
+      "balance-sheet": "Bilan",
+      "accounts": "Plan comptable",
+      "journal": "Journal",
+      "periods": "Périodes"
+    },
+    "balanced": "Équilibré",
+    "notBalanced": "Déséquilibré",
+    "asOf": "Au",
+    "from": "Du",
+    "to": "Au",
+    "totals": "Totaux",
+    "difference": "Écart",
+    "cols": {
+      "code": "Code",
+      "account": "Compte",
+      "type": "Type",
+      "debit": "Débit",
+      "credit": "Crédit",
+      "normal": "Sens normal",
+      "postable": "Imputable"
+    },
+    "income": "Produits",
+    "totalIncome": "Total des produits",
+    "cogs": "Coût des marchandises vendues",
+    "grossProfit": "Marge brute",
+    "expenses": "Charges",
+    "totalExpenses": "Total des charges",
+    "netProfit": "Résultat net",
+    "assets": "Actif",
+    "totalAssets": "Total de l'actif",
+    "liabilities": "Passif",
+    "totalLiabilities": "Total du passif",
+    "equity": "Capitaux propres",
+    "currentEarnings": "Résultat de l'exercice",
+    "totalEquity": "Total des capitaux propres",
+    "totalLiabEquity": "Total passif et capitaux propres",
+    "noEntries": "Aucune écriture pour le moment.",
+    "reversed": "Contre-passée",
+    "system": "Auto",
+    "newEntry": "Nouvelle écriture",
+    "postEntry": "Enregistrer l'écriture",
+    "entryPosted": "Écriture enregistrée.",
+    "entryFailed": "Impossible d'enregistrer l'écriture.",
+    "date": "Date",
+    "memo": "Libellé",
+    "memoPlaceholder": "Objet de cette écriture ?",
+    "addLine": "Ajouter une ligne",
+    "mustBalance": "Les débits et crédits doivent être égaux.",
+    "noPeriods": "Aucune période comptable pour le moment.",
+    "closePeriod": "Clôturer",
+    "reopenPeriod": "Rouvrir",
+    "periodClosed": "Période clôturée.",
+    "periodReopened": "Période rouverte.",
+    "periodStatus": {
+      "open": "Ouverte",
+      "closed": "Clôturée",
+      "locked": "Verrouillée"
     }
   }
 }

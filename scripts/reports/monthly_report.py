@@ -43,7 +43,11 @@ def build_report(store, start, end, labor_cost):
     sales = rc.sales_between(store.sales(), start, end)
     income_txns = rc.transactions_between(store.transactions(), start, end, direction="income")
     expense_txns = rc.transactions_between(store.transactions(), start, end, direction="expense")
-    expenses = rc.expenses_between(store.expenses(), start, end)
+    # Inventory write-offs are non-cash waste, not operating spending — keep them
+    # out of expenses / cash flow and report their value separately.
+    expenses, write_offs = rc.split_write_offs(
+        rc.expenses_between(store.expenses(), start, end)
+    )
     runs = rc.completed_runs_between(store.runs(), start, end)
 
     sales_total = rc.revenue(sales)
@@ -51,6 +55,7 @@ def build_report(store, start, end, labor_cost):
     revenue_total = sales_total + income_total
     cost_of_goods = rc.cogs(sales)
     operating_expenses = rc.expense_total(expenses, expense_txns)
+    write_off_total = sum((rc.D(e["amount"]) for e in write_offs), rc.ZERO)
 
     gross_profit = sales_total - cost_of_goods
 
@@ -90,6 +95,7 @@ def build_report(store, start, end, labor_cost):
             "fixed_costs": fixed_costs,
             "net_profit": net_profit,
             "labor_included": labor_cost is not None,
+            "inventory_write_offs": write_off_total,
         },
         "ratios": {
             "gross_margin_pct": gross_margin,
@@ -109,43 +115,47 @@ def build_report(store, start, end, labor_cost):
     }
 
 
-def render(report: dict, currency: str) -> None:
+def render(report: dict, doc, currency: str) -> None:
     M = lambda v: rc.money(v, currency)
 
-    rc.header("MONTHLY REPORT",
-              f"Month: {report['month']}  ({report['period']['start']} → {report['period']['end']})")
+    doc.header("MONTHLY REPORT",
+               f"Month: {report['month']}  ({report['period']['start']} → {report['period']['end']})")
 
     pl = report["profit_and_loss"]
-    rc.section("1. Profit & Loss")
-    rc.kv("Sales", M(pl["sales"]))
-    rc.kv("+ Other income", M(pl["other_income"]))
-    rc.kv("= Revenue", M(pl["revenue"]))
-    print()
-    rc.kv("- Cost of goods sold", M(pl["cost_of_goods_sold"]))
-    rc.kv("= Gross profit", M(pl["gross_profit"]))
-    print()
-    rc.kv("Variable costs (COGS)", M(pl["variable_costs"]))
-    rc.kv("Operating expenses", M(pl["operating_expenses"]))
-    rc.kv("Labour cost", M(pl["labor_cost"]) if pl["labor_included"] else "n/a (pass --labor-cost)")
-    rc.kv("= Fixed costs", M(pl["fixed_costs"]))
-    print()
+    doc.section("1. Profit & Loss")
+    doc.kv("Sales", M(pl["sales"]))
+    doc.kv("+ Other income", M(pl["other_income"]))
+    doc.kv("= Revenue", M(pl["revenue"]))
+    doc.text()
+    doc.kv("- Cost of goods sold", M(pl["cost_of_goods_sold"]))
+    doc.kv("= Gross profit", M(pl["gross_profit"]))
+    doc.text()
+    doc.kv("Variable costs (COGS)", M(pl["variable_costs"]))
+    doc.kv("Operating expenses", M(pl["operating_expenses"]))
+    doc.kv("Labour cost", M(pl["labor_cost"]) if pl["labor_included"] else "n/a (pass --labor-cost)")
+    doc.kv("= Fixed costs", M(pl["fixed_costs"]))
+    doc.text()
     label = "= Net profit" if pl["labor_included"] else "= Net profit (before labour)"
-    rc.kv(label, rc.signed_money(pl["net_profit"], currency))
+    doc.kv(label, rc.signed_money(pl["net_profit"], currency))
+    if pl["inventory_write_offs"]:
+        doc.text()
+        doc.kv("Inventory write-offs",
+               f"{M(pl['inventory_write_offs'])}  (non-cash waste, excluded from expenses)")
 
     r = report["ratios"]
-    rc.section("2. Key financial ratios")
-    rc.kv("Gross margin", rc.percent(r["gross_margin_pct"]))
-    rc.kv("Labour cost ratio", rc.percent(r["labor_cost_ratio_pct"]))
-    rc.kv("Units produced", rc.qty(r["units_produced"]))
-    rc.kv("Units sold", rc.qty(r["units_sold"]))
-    rc.kv("Waste (produced - sold)", f"{rc.qty(r['waste_units'])} units  ({rc.percent(r['waste_pct'])})")
+    doc.section("2. Key financial ratios")
+    doc.kv("Gross margin", rc.percent(r["gross_margin_pct"]))
+    doc.kv("Labour cost ratio", rc.percent(r["labor_cost_ratio_pct"]))
+    doc.kv("Units produced", rc.qty(r["units_produced"]))
+    doc.kv("Units sold", rc.qty(r["units_sold"]))
+    doc.kv("Waste (produced - sold)", f"{rc.qty(r['waste_units'])} units  ({rc.percent(r['waste_pct'])})")
 
     cf = report["cash_flow"]
-    rc.section("3. Cash flow")
-    rc.kv("Money in (sales + income)", M(cf["money_in"]))
-    rc.kv("Money out (expenses)", M(cf["money_out"]))
-    rc.kv("Net cash flow", rc.signed_money(cf["net_cash_flow"], currency))
-    print()
+    doc.section("3. Cash flow")
+    doc.kv("Money in (sales + income)", M(cf["money_in"]))
+    doc.kv("Money out (expenses)", M(cf["money_out"]))
+    doc.kv("Net cash flow", rc.signed_money(cf["net_cash_flow"], currency))
+    doc.text()
 
 
 def main() -> int:
@@ -173,8 +183,13 @@ def main() -> int:
 
     if args.json:
         rc.emit(report)
+    elif args.docx:
+        doc = rc.DocxDoc(args.currency)
+        render(report, doc, args.currency)
+        doc.save(args.docx)
+        print(f"Wrote {args.docx}")
     else:
-        render(report, args.currency)
+        render(report, rc.TerminalDoc(), args.currency)
     return 0
 
 

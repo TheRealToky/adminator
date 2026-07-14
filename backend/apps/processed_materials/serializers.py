@@ -286,8 +286,7 @@ class ProcessedMaterialStockAdjustSerializer(serializers.Serializer):
 class ProcessedMaterialStockWriteOffSerializer(serializers.Serializer):
     """Write off processed-material stock as waste/loss.
 
-    Decrements stock and books an Expense at ``unit_cost × quantity`` under the
-    shared "Inventory write-off" category.
+    Decrements stock only — waste is non-cash and no longer books an Expense.
     """
 
     processed_material = serializers.PrimaryKeyRelatedField(

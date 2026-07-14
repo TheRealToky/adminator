@@ -17,6 +17,7 @@ import { AssetsPage } from './pages/Assets';
 import { WalletsPage } from './pages/Wallets';
 import { UsersPage } from './pages/Users';
 import { ProcessedMaterialsPage } from './pages/ProcessedMaterials';
+import { LedgerPage } from './pages/Ledger';
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="budgets" element={<BudgetsPage />} />
         <Route path="assets" element={<AssetsPage />} />
         <Route path="wallets" element={<WalletsPage />} />
+        <Route path="ledger" element={<LedgerPage />} />
         <Route path="users" element={<UsersPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
