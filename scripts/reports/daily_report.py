@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Daily operations report for the pastry shop.
 
-Pulls one calendar day from the Adminator API and prints five sections:
+Pulls one calendar day from the Adminator API and prints six sections:
 
 1. **Sales summary** — total takings, receipt count, average order value, and
    the best- and slowest-selling items of the day (by units).
@@ -9,10 +9,14 @@ Pulls one calendar day from the Adminator API and prints five sections:
    many were sold, with a waste % (units produced that didn't sell that day).
 3. **Cash report** — sales split by payment method, total expenses, and a cash
    drawer reconciliation (expected vs counted vs difference).
-4. **Revenue & profit** — the day's revenue (sales + other income), cost of
+4. **Expenses** — an itemised list of every expense making up the day's total:
+   recorded expenses plus manual expense-direction transactions. Non-cash
+   inventory write-offs are excluded (they show on their own line in section 3),
+   so the list reconciles to the "Total expenses" figure.
+5. **Revenue & profit** — the day's revenue (sales + other income), cost of
    goods sold, gross profit / margin, and net profit before labour (net of
    operating expenses). Labour isn't tracked per day, so it's excluded.
-5. **Money available** — the live balance of every active wallet and their sum
+6. **Money available** — the live balance of every active wallet and their sum
    ("total money available"). These are *current* balances, not as of the
    report date — wallet balances aren't snapshotted historically.
 
@@ -103,7 +107,24 @@ def build_report(store: rc.DataStore, day, counted_cash, opening_float):
     expected_cash = rc.D(opening_float) + cash_sales - cash_expenses
     difference = None if counted_cash is None else rc.D(counted_cash) - expected_cash
 
-    # 4 ── revenue & profit ───────────────────────────────────────────────────
+    # 4 ── expenses ───────────────────────────────────────────────────────────
+    # Every individual expense making up "Total expenses": recorded expenses
+    # plus manual expense-direction transactions. Write-offs are already split
+    # out above (non-cash), so this list reconciles to `total_expenses`.
+    def _expense_row(rec, date_key):
+        return {
+            "title": rec.get("title") or "(untitled)",
+            "category": rec.get("category_name") or "",
+            "wallet": rec.get("wallet_name") or "",
+            "date": rec.get(date_key, ""),
+            "amount": rc.D(rec["amount"]),
+        }
+
+    expense_items = [_expense_row(e, "incurred_on") for e in expenses]
+    expense_items += [_expense_row(t, "occurred_on") for t in expense_txns]
+    expense_items.sort(key=lambda r: -r["amount"])
+
+    # 5 ── revenue & profit ───────────────────────────────────────────────────
     # Mirrors the monthly P&L on a single day: gross profit = sales − COGS;
     # net profit (before labour, which the app doesn't track per day) also
     # nets off the day's other income and operating expenses.
@@ -114,7 +135,7 @@ def build_report(store: rc.DataStore, day, counted_cash, opening_float):
     gross_margin = rc.pct(gross_profit, total)
     net_profit = revenue_total - cost_of_goods - total_expenses
 
-    # 5 ── money available ────────────────────────────────────────────────────
+    # 6 ── money available ────────────────────────────────────────────────────
     # Sum of every active wallet's live balance. Note this is the balance *now*,
     # not as of `day` — wallet balances aren't snapshotted historically.
     wallets = [w for w in store.wallets() if w.get("is_active", True)]
@@ -158,6 +179,10 @@ def build_report(store: rc.DataStore, day, counted_cash, opening_float):
             "expected_cash": expected_cash,
             "counted_cash": None if counted_cash is None else rc.D(counted_cash),
             "difference": difference,
+        },
+        "expenses": {
+            "items": expense_items,
+            "total": total_expenses,
         },
         "profit": {
             "sales": total,
@@ -240,8 +265,21 @@ def render(report: dict, doc, currency: str) -> None:
         doc.kv("  Difference", f"{rc.signed_money(c['difference'], currency)}  ({verdict})")
     doc.text()
 
+    ex = report["expenses"]
+    doc.section("4. Expenses")
+    if ex["items"]:
+        doc.table(
+            ["Expense", "Category", "Wallet", "Amount"],
+            [[i["title"], i["category"], i["wallet"], M(i["amount"])] for i in ex["items"]],
+            aligns=["l", "l", "l", "r"],
+        )
+        doc.text()
+        doc.kv("Total expenses", M(ex["total"]))
+    else:
+        doc.text("  (no expenses on this day)")
+
     pr = report["profit"]
-    doc.section("4. Revenue & profit")
+    doc.section("5. Revenue & profit")
     doc.kv("Sales", M(pr["sales"]))
     doc.kv("+ Other income", M(pr["other_income"]))
     doc.kv("= Revenue", M(pr["revenue"]))
@@ -254,7 +292,7 @@ def render(report: dict, doc, currency: str) -> None:
     doc.kv("= Net profit (before labour)", rc.signed_money(pr["net_profit"], currency))
 
     ma = report["money_available"]
-    doc.section("5. Money available")
+    doc.section("6. Money available")
     doc.text("  Balance per wallet (current, not as of report date):")
     doc.table(
         ["Wallet", "Balance"],

@@ -25,6 +25,9 @@ What this module provides
   …) that take an already-filtered list of rows and return plain dicts.
 * Formatting + a small table/section renderer for consistent, readable output,
   plus ``--json`` support via :func:`emit`.
+* Bill-of-materials helpers (:func:`bom_line`, :func:`costliest_first`) and a
+  flat-table Excel writer (:func:`xlsx_workbook`, :func:`xlsx_sheet`) shared by
+  the recipe exports.
 
 Config comes from the same environment variables the import scripts honour
 (``ADMINATOR_API`` / ``ADMINATOR_EMAIL`` / ``ADMINATOR_PASSWORD``), plus a few
@@ -227,6 +230,18 @@ class DataStore:
     def wallets(self) -> list:
         return self._get("wallets", "/finance/wallets/")
 
+    def raw_materials(self) -> list:
+        return self._get("raw_materials", "/catalog/raw-materials/")
+
+    def processed_materials(self) -> list:
+        return self._get("processed_materials", "/processed-materials/materials/")
+
+    def processed_batches(self) -> list:
+        return self._get("processed_batches", "/processed-materials/batches/")
+
+    def raw_material_stock(self) -> list:
+        return self._get("raw_material_stock", "/inventory/stock/?kind=raw_material")
+
 
 # ── date helpers ─────────────────────────────────────────────────────────────
 def parse_date(value: str) -> date:
@@ -343,6 +358,36 @@ def product_production(runs: list) -> dict:
     return out
 
 
+#: The two things that can appear on a bill of materials. A product's recipe
+#: mixes both (raw materials directly, processed materials drawn from stock);
+#: a processed material's recipe mixes a raw material with a sub-recipe.
+RAW = "raw material"
+PROCESSED = "processed material"
+
+
+def bom_line(kind: str, name: str, sku: str, unit: str, quantity, unit_cost,
+             via: str = "") -> dict:
+    """One bill-of-materials row: an ingredient, how much of it, what it costs.
+
+    ``via`` names the processed material an ingredient came through when a
+    recipe has been expanded down to raw materials; it is blank on a line that
+    the recipe states directly.
+    """
+    quantity, unit_cost = D(quantity), D(unit_cost)
+    return {
+        "kind": kind, "name": name, "sku": sku, "unit": unit, "via": via,
+        "quantity": quantity, "unit_cost": unit_cost,
+        "line_cost": quantity * unit_cost,
+    }
+
+
+def costliest_first(lines: list[dict]) -> list[dict]:
+    """Sort BOM lines by what they cost — the line worth arguing about when the
+    margin moves goes to the top. Ties fall back to name so the order is stable
+    from run to run."""
+    return sorted(lines, key=lambda r: (-r["line_cost"], r["name"]))
+
+
 def payment_breakdown(sales: list) -> dict:
     """``{payment_method: {revenue, receipts}}`` for the given sales."""
     out: dict[str, dict] = {}
@@ -382,6 +427,30 @@ def split_write_offs(expenses: list) -> tuple[list, list]:
 
 def transaction_total(transactions: list) -> Decimal:
     return sum((D(t["amount"]) for t in transactions), ZERO)
+
+
+#: Transaction category recording staff pay. Labour has no model of its own, so
+#: the monthly report derives its labour line from these rows. Matched
+#: case-insensitively: categories are free-form text typed in the UI.
+SALARY_CATEGORY = "Salary"
+
+
+def is_salary(transaction: dict) -> bool:
+    """True when a transaction row records staff pay."""
+    return (transaction.get("category_name") or "").strip().lower() == SALARY_CATEGORY.lower()
+
+
+def split_salary(transactions: list) -> tuple[list, list]:
+    """Partition transaction rows into ``(other, salary)``.
+
+    Salary rows are expense-direction like any other spending, so a caller that
+    reports labour separately must drop them from its operating-expense total or
+    the same money lands in the P&L twice.
+    """
+    other, salary = [], []
+    for t in transactions:
+        (salary if is_salary(t) else other).append(t)
+    return other, salary
 
 
 def env_decimal(name: str):
@@ -586,6 +655,66 @@ class DocxDoc:
     def save(self, path: str) -> None:
         self._flush_kv()
         self._doc.save(path)
+
+
+# ── spreadsheet output (.xlsx) ───────────────────────────────────────────────
+# The export scripts (product_recipes.py, processed_material_recipes.py) write
+# the same shape of workbook: one flat table per sheet, bold filterable header,
+# frozen top row, per-column widths and number formats. That plumbing lives
+# here; a script only supplies its column spec and its rows. Like DocxDoc, the
+# third-party import happens inside the functions, so the text and JSON reports
+# never need openpyxl installed.
+
+#: Number formats a column spec can ask for.
+QTY_FMT = "#,##0.####"
+MONEY_FMT = "#,##0.00"
+PCT_FMT = "0.0%"
+
+
+def xlsx_workbook():
+    """A fresh workbook, or a friendly exit when openpyxl isn't installed."""
+    try:
+        from openpyxl import Workbook
+    except ModuleNotFoundError:
+        sys.exit(
+            "This script needs the openpyxl package.\n"
+            "Install it with:  pip install openpyxl"
+        )
+    return Workbook()
+
+
+def xlsx_sheet(wb, title: str, columns: list[tuple], rows: list[list], first: bool = False):
+    """Write one flat table to a new sheet.
+
+    ``columns`` is a list of ``(header, width, number_format)``; a ``None``
+    format leaves the column as text. ``first=True`` reuses the workbook's
+    default sheet rather than appending another one.
+    """
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    ws = wb.active if first else wb.create_sheet()
+    ws.title = title
+
+    ws.append([c[0] for c in columns])
+    for idx, (_, width, _fmt) in enumerate(columns, start=1):
+        ws.column_dimensions[get_column_letter(idx)].width = width
+        cell = ws.cell(row=1, column=idx)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="DDEBF7")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for row in rows:
+        ws.append(row)
+        for idx, (_, _, fmt) in enumerate(columns, start=1):
+            if fmt:
+                ws.cell(row=ws.max_row, column=idx).number_format = fmt
+
+    # Freeze the header and turn on the filter dropdowns: the whole point of a
+    # flat one-row-per-ingredient table is slicing it by product or ingredient.
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    return ws
 
 
 def base_arg_parser(description: str) -> argparse.ArgumentParser:

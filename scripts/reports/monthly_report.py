@@ -19,10 +19,15 @@ YYYY-MM-DD``), in three sections:
      * money out = total expenses
      * net cash flow = money in − money out
 
-Labour is not modelled in the app, so the month's labour cost is supplied from
-outside via ``--labor-cost`` (or env ``ADMINATOR_LABOR_COST_MONTHLY``); when it
-is omitted the labour line and ratio read ``n/a`` and net profit is reported
-before labour.
+Labour has no model of its own, so the month's labour cost is summed from the
+transactions in the reported range whose category is ``Salary``. Those rows are
+expense-direction, so they are held out of operating expenses to keep the P&L
+from subtracting the same money twice; they still count as cash out.
+
+``--labor-cost`` (or env ``ADMINATOR_LABOR_COST_MONTHLY``) overrides that sum,
+for pay the shop never recorded as a transaction. With no salary transactions
+and no override the labour line and ratio read ``n/a`` and net profit is
+reported before labour.
 
 Read-only: this never writes to the backend.
 
@@ -45,10 +50,15 @@ import report_common as rc
 TRAILING_DAYS = 30
 
 
-def build_report(store, start, end, labor_cost, period_label=None):
+def build_report(store, start, end, labor_override, period_label=None):
     sales = rc.sales_between(store.sales(), start, end)
     income_txns = rc.transactions_between(store.transactions(), start, end, direction="income")
     expense_txns = rc.transactions_between(store.transactions(), start, end, direction="expense")
+    # Salary rows are the labour line, reported on their own below — hold them
+    # out of operating expenses so the same money isn't subtracted twice. Only
+    # rows already filtered to [start, end] reach here, so labour covers this
+    # period alone.
+    expense_txns, salary_txns = rc.split_salary(expense_txns)
     # Inventory write-offs are non-cash waste, not operating spending — keep them
     # out of expenses / cash flow and report their value separately.
     expenses, write_offs = rc.split_write_offs(
@@ -61,9 +71,20 @@ def build_report(store, start, end, labor_cost, period_label=None):
     revenue_total = sales_total + income_total
     cost_of_goods = rc.cogs(sales)
     operating_expenses = rc.expense_total(expenses, expense_txns)
+    salary_total = rc.transaction_total(salary_txns)
     write_off_total = sum((rc.D(e["amount"]) for e in write_offs), rc.ZERO)
 
     gross_profit = sales_total - cost_of_goods
+
+    # Labour: an explicit --labor-cost wins (it can cover pay the shop never
+    # recorded); otherwise use the period's salary transactions. With neither,
+    # labour stays unknown rather than being asserted as zero.
+    if labor_override is not None:
+        labor_cost, labor_source = labor_override, "override"
+    elif salary_txns:
+        labor_cost, labor_source = salary_total, "salary"
+    else:
+        labor_cost, labor_source = None, None
 
     # Variable costs = COGS; fixed costs = operating expenses + labour (if known).
     variable_costs = cost_of_goods
@@ -82,8 +103,11 @@ def build_report(store, start, end, labor_cost, period_label=None):
     waste_units = units_produced - units_sold
     waste_pct = rc.pct(waste_units, units_produced)
 
+    # Cash flow tracks money the shop actually recorded leaving, so salary counts
+    # here even though it sits outside operating_expenses above. A --labor-cost
+    # override does not: it stands for pay with no transaction behind it.
     money_in = sales_total + income_total
-    money_out = operating_expenses
+    money_out = operating_expenses + salary_total
     net_cash_flow = money_in - money_out
 
     # A trailing window can straddle two calendar months, so ``month`` only
@@ -105,6 +129,8 @@ def build_report(store, start, end, labor_cost, period_label=None):
             "variable_costs": variable_costs,
             "operating_expenses": operating_expenses,
             "labor_cost": labor_cost,
+            "labor_source": labor_source,
+            "salary_transactions": len(salary_txns),
             "fixed_costs": fixed_costs,
             "net_profit": net_profit,
             "labor_included": labor_cost is not None,
@@ -145,7 +171,14 @@ def render(report: dict, doc, currency: str) -> None:
     doc.text()
     doc.kv("Variable costs (COGS)", M(pl["variable_costs"]))
     doc.kv("Operating expenses", M(pl["operating_expenses"]))
-    doc.kv("Labour cost", M(pl["labor_cost"]) if pl["labor_included"] else "n/a (pass --labor-cost)")
+    if pl["labor_source"] == "salary":
+        n = pl["salary_transactions"]
+        labor_line = f"{M(pl['labor_cost'])}  ({n} salary transaction{'s' if n != 1 else ''})"
+    elif pl["labor_source"] == "override":
+        labor_line = f"{M(pl['labor_cost'])}  (--labor-cost override)"
+    else:
+        labor_line = "n/a (no salary transactions; pass --labor-cost)"
+    doc.kv("Labour cost", labor_line)
     doc.kv("= Fixed costs", M(pl["fixed_costs"]))
     doc.text()
     label = "= Net profit" if pl["labor_included"] else "= Net profit (before labour)"
@@ -179,7 +212,8 @@ def main() -> int:
     period.add_argument("--date", metavar="YYYY-MM-DD",
                         help=f"Report the trailing {TRAILING_DAYS} days ending on (and including) this day.")
     p.add_argument("--labor-cost", type=str, default=None,
-                   help="Labour cost for the month (else env ADMINATOR_LABOR_COST_MONTHLY).")
+                   help="Override the labour cost (default: sum of the period's "
+                        f"'{rc.SALARY_CATEGORY}' transactions; else env ADMINATOR_LABOR_COST_MONTHLY).")
     args = p.parse_args()
 
     api = rc.Api(args.base_url, args.email, args.password)
