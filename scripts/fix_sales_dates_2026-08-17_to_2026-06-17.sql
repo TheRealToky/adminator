@@ -23,11 +23,11 @@ BEGIN;
 SET LOCAL TimeZone = 'Africa/Kigali';
 
 UPDATE sales_sale
-SET    occurred_at = occurred_at - INTERVAL '2 months'
-WHERE  (occurred_at AT TIME ZONE 'Africa/Kigali')::date = DATE '2026-08-17'
+SET    occurred_at = occurred_at - INTERVAL '1 day'
+WHERE  (occurred_at AT TIME ZONE 'Africa/Kigali')::date = DATE '2026-07-22'
 RETURNING id,
           receipt_number,
           occurred_at AS new_occurred_at;
 
--- COMMIT;
-ROLLBACK;  -- use instead of COMMIT to dry-run
+COMMIT;
+-- ROLLBACK;  -- use instead of COMMIT to dry-run
