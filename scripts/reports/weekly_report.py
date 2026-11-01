@@ -2,19 +2,27 @@
 r"""Weekly performance report for the pastry shop.
 
 Reports a 7-day window (ending on ``--week-ending``, default the latest day with
-sales) in four sections:
+sales) in six sections:
 
 1. **Revenue performance** — this week vs the previous week vs the average of the
    trailing ``--avg-weeks`` weeks (default 4), with the week-on-week change.
 2. **Product performance** — per product: units sold, revenue and margin %
    (``(revenue − COGS) ÷ revenue`` using the cost snapshot taken at sale time).
-3. **Cost tracking** — ingredients cost ÷ sales, i.e. cost of goods sold over
-   revenue for the week.
-4. **Operations KPIs** — waste rate, production accuracy, delivery delays,
+3. **Expenses** — an itemised list of every expense making up the week's total:
+   recorded expenses plus manual expense-direction transactions. Non-cash
+   inventory write-offs are excluded and shown on their own line, so the list
+   reconciles to the "Total expenses" figure.
+4. **Revenue & profit** — the week's revenue (sales + other income), cost of
+   goods sold, gross profit / margin, ingredients ÷ sales, and net profit before
+   labour (net of operating expenses). Labour isn't tracked, so it's excluded.
+5. **Operations KPIs** — waste rate, production accuracy, delivery delays,
    employee hours per 1,000 revenue, and customer complaints.
+6. **Money available** — the live balance of every active wallet and their sum
+   ("total money available"). These are *current* balances, not as of the week
+   end — wallet balances aren't snapshotted historically.
 
-Three of those KPIs are not modelled in the app, so they are supplied from
-outside and otherwise show ``n/a``:
+Three of the operations KPIs are not modelled in the app, so they are supplied
+from outside and otherwise show ``n/a``:
 
 * ``--labor-hours``  (env ``ADMINATOR_LABOR_HOURS_WEEKLY``) — staff hours worked.
 * ``--complaints``   (env ``ADMINATOR_COMPLAINTS_WEEKLY``) — customer complaints.
@@ -81,10 +89,44 @@ def build_report(store, end, avg_weeks, labor_hours, complaints, delivery_delays
             "revenue": row["revenue"], "margin_pct": margin,
         })
 
-    # ── cost tracking: COGS ÷ sales ──────────────────────────────────────────
+    # ── expenses ─────────────────────────────────────────────────────────────
+    # Same treatment as the daily report: inventory write-offs are non-cash
+    # waste, so they are split out and shown on their own line, and the itemised
+    # list (recorded expenses + manual expense-direction transactions)
+    # reconciles to "Total expenses".
+    expenses, write_offs = rc.split_write_offs(
+        rc.expenses_between(store.expenses(), start, end)
+    )
+    expense_txns = rc.transactions_between(txns_all, start, end, direction="expense")
+    income_txns = rc.transactions_between(txns_all, start, end, direction="income")
+
+    def _expense_row(rec, date_key):
+        return {
+            "title": rec.get("title") or "(untitled)",
+            "category": rec.get("category_name") or "",
+            "wallet": rec.get("wallet_name") or "",
+            "date": rec.get(date_key, ""),
+            "amount": rc.D(rec["amount"]),
+        }
+
+    expense_items = [_expense_row(e, "incurred_on") for e in expenses]
+    expense_items += [_expense_row(t, "occurred_on") for t in expense_txns]
+    expense_items.sort(key=lambda r: -r["amount"])
+    total_expenses = rc.expense_total(expenses, expense_txns)
+    write_off_total = sum((rc.D(e["amount"]) for e in write_offs), rc.ZERO)
+
+    # ── revenue & profit ─────────────────────────────────────────────────────
+    # Mirrors the daily P&L over the 7-day window: gross profit = sales − COGS;
+    # net profit (before labour, which the app doesn't track) also nets off the
+    # week's other income and operating expenses.
     sales_total = rc.revenue(week_sales)
+    income_total = rc.transaction_total(income_txns)
+    revenue_total = sales_total + income_total
     week_cogs = rc.cogs(week_sales)
+    gross_profit = sales_total - week_cogs
+    gross_margin = rc.pct(gross_profit, sales_total)
     cogs_ratio = rc.pct(week_cogs, sales_total)
+    net_profit = revenue_total - week_cogs - total_expenses
 
     # ── operations KPIs ──────────────────────────────────────────────────────
     runs = rc.completed_runs_between(runs_all, start, end)
@@ -104,6 +146,17 @@ def build_report(store, end, avg_weeks, labor_hours, complaints, delivery_delays
         rc.safe_div(labor_hours, sales_total / 1000) if labor_hours is not None else None
     )
 
+    # ── money available ──────────────────────────────────────────────────────
+    # Sum of every active wallet's live balance. Note this is the balance *now*,
+    # not as of the week end — wallet balances aren't snapshotted historically.
+    wallets = [w for w in store.wallets() if w.get("is_active", True)]
+    wallet_rows = [
+        {"name": w.get("name", "(unnamed)"), "balance": rc.D(w.get("current_balance"))}
+        for w in wallets
+    ]
+    wallet_rows.sort(key=lambda r: -r["balance"])
+    money_available = sum((r["balance"] for r in wallet_rows), rc.ZERO)
+
     return {
         "week_start": start.isoformat(),
         "week_end": end.isoformat(),
@@ -116,10 +169,22 @@ def build_report(store, end, avg_weeks, labor_hours, complaints, delivery_delays
             "vs_average_pct": vs_avg,
         },
         "product_performance": product_rows,
-        "cost_tracking": {
+        "expenses": {
+            "items": expense_items,
+            "total": total_expenses,
+            "write_offs": write_off_total,
+            "write_off_count": len(write_offs),
+        },
+        "revenue_profit": {
             "sales": sales_total,
-            "ingredients_cost": week_cogs,
+            "other_income": income_total,
+            "revenue": revenue_total,
+            "cost_of_goods_sold": week_cogs,
+            "gross_profit": gross_profit,
+            "gross_margin_pct": gross_margin,
             "cogs_to_sales_pct": cogs_ratio,
+            "operating_expenses": total_expenses,
+            "net_profit": net_profit,
         },
         "operations_kpis": {
             "units_produced": units_produced,
@@ -131,6 +196,10 @@ def build_report(store, end, avg_weeks, labor_hours, complaints, delivery_delays
             "labor_hours": labor_hours,
             "employee_hours_per_1k_revenue": hours_per_1k,
             "customer_complaints": complaints,
+        },
+        "money_available": {
+            "total": money_available,
+            "wallets": wallet_rows,
         },
     }
 
@@ -160,14 +229,38 @@ def render(report: dict, doc, currency: str, top: int) -> None:
     if top and len(rows) > top:
         doc.text(f"  … {len(rows) - top} more product(s) (use --top 0 to show all)")
 
-    c = report["cost_tracking"]
-    doc.section("3. Cost tracking")
-    doc.kv("Sales (revenue)", M(c["sales"]))
-    doc.kv("Ingredients cost (COGS)", M(c["ingredients_cost"]))
-    doc.kv("Ingredients ÷ sales", rc.percent(c["cogs_to_sales_pct"]))
+    ex = report["expenses"]
+    doc.section("3. Expenses")
+    if ex["items"]:
+        doc.table(
+            ["Expense", "Category", "Wallet", "Amount"],
+            [[i["title"], i["category"], i["wallet"], M(i["amount"])] for i in ex["items"]],
+            aligns=["l", "l", "l", "r"],
+        )
+        doc.text()
+        doc.kv("Total expenses", M(ex["total"]))
+    else:
+        doc.text("  (no expenses this week)")
+    if ex["write_offs"]:
+        doc.kv("Inventory write-offs",
+               f"{M(ex['write_offs'])}  ({rc.num(ex['write_off_count'])} item(s), non-cash — excluded above)")
+
+    pr = report["revenue_profit"]
+    doc.section("4. Revenue & profit")
+    doc.kv("Sales", M(pr["sales"]))
+    doc.kv("+ Other income", M(pr["other_income"]))
+    doc.kv("= Revenue", M(pr["revenue"]))
+    doc.text()
+    doc.kv("- Cost of goods sold", M(pr["cost_of_goods_sold"]))
+    doc.kv("= Gross profit", rc.signed_money(pr["gross_profit"], currency))
+    doc.kv("  Gross margin", rc.percent(pr["gross_margin_pct"]))
+    doc.kv("  Ingredients ÷ sales", rc.percent(pr["cogs_to_sales_pct"]))
+    doc.text()
+    doc.kv("- Operating expenses", M(pr["operating_expenses"]))
+    doc.kv("= Net profit (before labour)", rc.signed_money(pr["net_profit"], currency))
 
     k = report["operations_kpis"]
-    doc.section("4. Operations KPIs")
+    doc.section("5. Operations KPIs")
     doc.kv("Units produced", rc.qty(k["units_produced"]))
     doc.kv("Units sold", rc.qty(k["units_sold"]))
     doc.kv("Waste rate", rc.percent(k["waste_rate_pct"]))
@@ -183,6 +276,17 @@ def render(report: dict, doc, currency: str, top: int) -> None:
     doc.kv("Customer complaints",
            rc.num(k["customer_complaints"]) if k["customer_complaints"] is not None
            else "n/a (pass --complaints)")
+
+    ma = report["money_available"]
+    doc.section("6. Money available")
+    doc.text("  Balance per wallet (current, not as of week end):")
+    doc.table(
+        ["Wallet", "Balance"],
+        [[w["name"], M(w["balance"])] for w in ma["wallets"]],
+        aligns=["l", "r"],
+    )
+    doc.text()
+    doc.kv("Total money available", M(ma["total"]))
     doc.text()
 
 

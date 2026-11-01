@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 
 def get_engine():
@@ -17,12 +17,12 @@ def get_engine():
     return create_engine(f"postgresql+psycopg://{user}:{password}@{host}:{port}/{db}")
 
 
-def read_sql(query: str, **kwargs) -> pd.DataFrame:
+def read_sql(query, **kwargs) -> pd.DataFrame:
     return pd.read_sql(query, get_engine(), **kwargs)
 
 
-def load_sales() -> pd.DataFrame:
-    df = read_sql("""
+def load_sales(start_date=None, end_date=None) -> pd.DataFrame:
+    query = """
         SELECT
             s.id,
             s.receipt_number,
@@ -35,13 +35,23 @@ def load_sales() -> pd.DataFrame:
             s.cost_of_goods,
             (s.total - s.cost_of_goods) AS profit
         FROM sales_sale s
-        ORDER BY s.occurred_at
-    """, parse_dates=["occurred_at"])
-    return df
+        WHERE 1=1
+    """
+    params = {}
+    if start_date is not None:
+        query += " AND s.occurred_at >= :start_date"
+        params["start_date"] = start_date
+    if end_date is not None:
+        query += " AND s.occurred_at <= :end_date"
+        params["end_date"] = end_date
+    query += " ORDER BY s.occurred_at"
+
+    stmt = text(query) if params else query
+    return read_sql(stmt, params=params if params else None, parse_dates=["occurred_at"])
 
 
-def load_sale_items() -> pd.DataFrame:
-    df = read_sql("""
+def load_sale_items(start_date=None, end_date=None) -> pd.DataFrame:
+    query = """
         SELECT
             si.id,
             si.sale_id,
@@ -58,24 +68,105 @@ def load_sale_items() -> pd.DataFrame:
         JOIN sales_sale s          ON s.id = si.sale_id
         JOIN catalog_product p     ON p.id = si.product_id
         JOIN catalog_productcategory c ON c.id = p.category_id
-        ORDER BY s.occurred_at
-    """, parse_dates=["occurred_at"])
-    return df
+        WHERE 1=1
+    """
+    params = {}
+    if start_date is not None:
+        query += " AND s.occurred_at >= :start_date"
+        params["start_date"] = start_date
+    if end_date is not None:
+        query += " AND s.occurred_at <= :end_date"
+        params["end_date"] = end_date
+    query += " ORDER BY s.occurred_at"
+
+    stmt = text(query) if params else query
+    return read_sql(stmt, params=params if params else None, parse_dates=["occurred_at"])
 
 
-def load_expenses() -> pd.DataFrame:
-    return read_sql("""
-        SELECT
-            e.id,
-            e.title,
-            e.amount,
-            e.incurred_on,
-            e.payment_method,
-            c.name AS category
-        FROM finance_expense e
-        JOIN finance_expensecategory c ON c.id = e.category_id
-        ORDER BY e.incurred_on
-    """, parse_dates=["incurred_on"])
+def load_expenses(start_date=None, end_date=None, source="all") -> pd.DataFrame:
+    """
+    Load expenses from the database into a DataFrame.
+
+    Args:
+        start_date: Optional start date/timestamp filter.
+        end_date: Optional end date/timestamp filter.
+        source: 'all' (default: combines finance_expense & transaction expenses),
+                'expenses' (only finance_expense records), or
+                'transactions' (only finance_transaction records with direction='expense').
+    """
+    if source == "expenses":
+        base_query = """
+            SELECT
+                e.id,
+                e.title,
+                e.amount,
+                e.incurred_on,
+                e.payment_method,
+                c.name AS category,
+                e.reference,
+                'expense' AS source_type
+            FROM finance_expense e
+            JOIN finance_expensecategory c ON c.id = e.category_id
+        """
+    elif source == "transactions":
+        base_query = """
+            SELECT
+                t.id,
+                t.title,
+                t.amount,
+                t.occurred_on AS incurred_on,
+                t.payment_method,
+                tc.name AS category,
+                t.reference,
+                'transaction' AS source_type
+            FROM finance_transaction t
+            JOIN finance_transactioncategory tc ON tc.id = t.category_id
+            WHERE t.direction = 'expense'
+        """
+    else:  # 'all'
+        base_query = """
+            SELECT
+                e.id,
+                e.title,
+                e.amount,
+                e.incurred_on,
+                e.payment_method,
+                c.name AS category,
+                e.reference,
+                'expense' AS source_type
+            FROM finance_expense e
+            JOIN finance_expensecategory c ON c.id = e.category_id
+            UNION ALL
+            SELECT
+                t.id,
+                t.title,
+                t.amount,
+                t.occurred_on AS incurred_on,
+                t.payment_method,
+                tc.name AS category,
+                t.reference,
+                'transaction' AS source_type
+            FROM finance_transaction t
+            JOIN finance_transactioncategory tc ON tc.id = t.category_id
+            WHERE t.direction = 'expense'
+        """
+
+    query = f"""
+        SELECT *
+        FROM ({base_query}) exp
+        WHERE 1=1
+    """
+    params = {}
+    if start_date is not None:
+        query += " AND exp.incurred_on >= :start_date"
+        params["start_date"] = start_date
+    if end_date is not None:
+        query += " AND exp.incurred_on <= :end_date"
+        params["end_date"] = end_date
+    query += " ORDER BY exp.incurred_on"
+
+    stmt = text(query) if params else query
+    return read_sql(stmt, params=params if params else None, parse_dates=["incurred_on"])
 
 
 def load_production() -> pd.DataFrame:

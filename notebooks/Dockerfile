@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir \
         sqlalchemy==2.* \
         prophet==1.1.* \
         plotly==5.* \
+        kaleido==0.2.1 \
         seaborn==0.13.* \
         ipywidgets==8.*
 

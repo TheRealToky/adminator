@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
 r"""Import a day's production sheet into Adminator (production runs).
 
-Reads ``pastry_production.xlsx`` and, for every row, records a production run
-of column **F ("Production")** units of the product in column **A ("Product")**
-via the REST API (``POST /production/runs/execute/``). The API does the real
-work: it consumes the recipe's raw materials, draws down processed materials,
-and adds the finished units to stock.
+Reads a ``pastry_production_<date>.xlsx`` file and, for every row, records a
+production run via the REST API (``POST /production/runs/execute/``). The API
+does the real work: it consumes the recipe's raw materials, draws down
+processed materials, and adds the finished units to stock.
+
+Supported Excel layouts
+-----------------------
+The script **auto-detects** which layout the file uses by inspecting the header
+row (row 1):
+
+* **New format** (7 columns) — detected when the header contains "Product Name":
+
+  | A    | B    | C            | D        | E               | F   | G               |
+  |------|------|--------------|----------|-----------------|-----|-----------------|
+  | Date | Time | Product Name | Category | Unit Price (RWF)| Qty | Total Value (RWF)|
+
+* **Legacy format** — A = Product, F = Production qty (0-indexed 0 and 5).
 
 Edge case handled
 -----------------
@@ -34,9 +46,9 @@ Usage
 
     # point at a different file / stack / date:
     python scripts/import_production.py --commit \
-        --file "C:\path\pastry_production.xlsx" \
+        --file "D:\path\pastry_production_2026-10-29.xlsx" \
         --base-url http://localhost:8001/api/v1 \
-        --date 2026-06-16
+        --date 2026-10-29
 
 Requirements (host): ``pip install openpyxl`` (only extra dependency; HTTP uses
 the standard library).
@@ -65,15 +77,30 @@ DEFAULT_EMAIL = os.environ.get("ADMINATOR_EMAIL", "admin@adminator.local")
 DEFAULT_PASSWORD = os.environ.get("ADMINATOR_PASSWORD", "admin12345")
 DEFAULT_FILE = os.environ.get(
     "PRODUCTION_XLSX",
-    r"D:\PC DISAINE\toky\Perso-D\red\production\2026_07\2026_07_22\pastry_production_2026-07-22.xlsx",
+    r"D:\PC DISAINE\toky\Perso-D\red\production\2026_10\pastry_production_2026-10-29.xlsx",
 )
-DEFAULT_DATE = "2026-07-22"
+DEFAULT_DATE = "2026-10-29"
 
-# Sheet/column layout: A=Product, F=Production qty (0-indexed 0 and 5).
+# Sheet name to look for first (falls back to the first worksheet if absent).
 SHEET_NAME = "Production"
-COL_PRODUCT = 0
-COL_PRODUCTION = 5
-COL_NOTES = 6
+
+# ── Legacy column layout (A=Product, F=Production qty, G=Notes) ──────────────
+LEGACY_COL_PRODUCT    = 0
+LEGACY_COL_PRODUCTION = 5
+LEGACY_COL_NOTES      = 6
+
+# ── New 7-column layout ───────────────────────────────────────────────────────
+# A=Date, B=Time, C=Product Name, D=Category, E=Unit Price, F=Qty, G=Total
+NEW_COL_DATE     = 0
+NEW_COL_TIME     = 1
+NEW_COL_PRODUCT  = 2
+NEW_COL_CATEGORY = 3
+NEW_COL_PRICE    = 4
+NEW_COL_QTY      = 5
+NEW_COL_TOTAL    = 6
+
+# Header keywords used to detect the new format (case-insensitive).
+_NEW_FORMAT_MARKER = "product name"
 
 # Curated aliases: production-sheet name (normalized) -> exact catalog name.
 # Only the cases plain normalization + fuzzy matching can't resolve on their
@@ -316,19 +343,77 @@ def produce_with_topup(api: Api, product: dict, quantity: Decimal, date: str,
 
 
 # ── spreadsheet ──────────────────────────────────────────────────────────────
+def _detect_new_format(header_row) -> bool:
+    """Return True if the header looks like the new 7-column layout."""
+    return any(
+        _NEW_FORMAT_MARKER in str(cell).lower()
+        for cell in header_row
+        if cell is not None
+    )
+
+
 def read_rows(path: str) -> list[dict]:
     wb = openpyxl.load_workbook(path, data_only=True)
     ws = wb[SHEET_NAME] if SHEET_NAME in wb.sheetnames else wb.worksheets[0]
+
+    all_rows = list(ws.iter_rows(values_only=True))
+    if not all_rows:
+        return []
+
+    header = all_rows[0]
+    is_new_fmt = _detect_new_format(header)
+    fmt_label = "new 7-column" if is_new_fmt else "legacy"
+    print(f"  [format] detected {fmt_label} layout (header: {list(header)[:4]}…)")
+
+    if is_new_fmt:
+        col_product    = NEW_COL_PRODUCT
+        col_production = NEW_COL_QTY
+        col_date       = NEW_COL_DATE
+    else:
+        col_product    = LEGACY_COL_PRODUCT
+        col_production = LEGACY_COL_PRODUCTION
+        col_date       = None  # date comes from --date arg in legacy format
+
     rows = []
-    for i, r in enumerate(ws.iter_rows(values_only=True), start=1):
-        if i == 1:
-            continue  # header
-        name = r[COL_PRODUCT] if len(r) > COL_PRODUCT else None
+    for i, r in enumerate(all_rows[1:], start=2):  # skip header (row 1)
+        name = r[col_product] if len(r) > col_product else None
         if name is None or str(name).strip() == "":
             continue
-        qty = r[COL_PRODUCTION] if len(r) > COL_PRODUCTION else None
-        note = r[COL_NOTES] if len(r) > COL_NOTES else None
-        rows.append({"row": i, "name": str(name).strip(), "qty": qty, "note": note})
+        qty = r[col_production] if len(r) > col_production else None
+
+        # In the new format we can also pull the date from the row itself.
+        row_date: str | None = None
+        if is_new_fmt and col_date is not None:
+            raw_date = r[col_date] if len(r) > col_date else None
+            if raw_date is not None:
+                # openpyxl may return a datetime object or a string.
+                import datetime as _dt
+                if isinstance(raw_date, (_dt.date, _dt.datetime)):
+                    row_date = raw_date.strftime("%Y-%m-%d")
+                else:
+                    row_date = str(raw_date).strip()
+
+        # Build a human-readable note from the extra columns when available.
+        note: str | None = None
+        if is_new_fmt:
+            category   = r[NEW_COL_CATEGORY] if len(r) > NEW_COL_CATEGORY else None
+            unit_price = r[NEW_COL_PRICE]    if len(r) > NEW_COL_PRICE    else None
+            total      = r[NEW_COL_TOTAL]    if len(r) > NEW_COL_TOTAL    else None
+            parts = []
+            if category:   parts.append(f"cat:{category}")
+            if unit_price: parts.append(f"price:{unit_price}")
+            if total:      parts.append(f"total:{total}")
+            note = "; ".join(parts) if parts else None
+        else:
+            note = r[LEGACY_COL_NOTES] if len(r) > LEGACY_COL_NOTES else None
+
+        rows.append({
+            "row":      i,
+            "name":     str(name).strip(),
+            "qty":      qty,
+            "note":     note,
+            "row_date": row_date,   # None for legacy format
+        })
     return rows
 
 
@@ -380,17 +465,20 @@ def main() -> int:
             print(f"  ? UNMATCHED  {r['name']!r}  (best score {score:.2f}) — skipped")
             continue
         tag = method if method != "fuzzy" else f"fuzzy {score:.2f}"
-        print(f"  • {r['name']:<26} → {product['name']:<24} ×{qty}  [{tag}]")
-        planned.append((r, product, qty))
+        # Use the row's own date if the new format provided one, else fall back
+        # to the --date argument supplied on the command line.
+        effective_date = r.get("row_date") or args.date
+        print(f"  • {r['name']:<26} → {product['name']:<24} ×{qty}  [{tag}]  date:{effective_date}")
+        planned.append((r, product, qty, effective_date))
 
     if args.limit:
         planned = planned[: args.limit]
 
     if args.commit and planned:
         print("\nRecording runs…")
-        for r, product, qty in planned:
+        for r, product, qty, effective_date in planned:
             try:
-                run = produce_with_topup(api, product, qty, args.date, materials,
+                run = produce_with_topup(api, product, qty, effective_date, materials,
                                          log=print)
                 done.append((product, qty, run))
                 print(f"  ✓ {product['name']} ×{qty}  (run {run['id'][:8]}, cost {run['cost']})")
