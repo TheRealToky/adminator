@@ -52,7 +52,7 @@ import urllib.error
 import urllib.request
 from collections import OrderedDict
 from decimal import ROUND_CEILING, Decimal, InvalidOperation
-from difflib import SequenceMatcher
+from difflib import SequenceMatcher, get_close_matches
 
 try:
     import openpyxl
@@ -66,7 +66,7 @@ DEFAULT_PASSWORD = os.environ.get("ADMINATOR_PASSWORD", "admin12345")
 DEFAULT_DATE = datetime.date.today().isoformat()
 DEFAULT_OFFSET = "+02:00"          # Africa/Kigali (no DST)
 DEFAULT_WALLET = "Petite caisse"
-DEFAULT_CATEGORY = "Other"
+DEFAULT_CATEGORY = "Others"
 
 # ── Sales constants (from import_sales.py) ───────────────────────────────────
 SALES_SHEET_NAME = "Sales Lines"
@@ -163,73 +163,130 @@ EXPENSE_WALLET_FOR_METHOD = {
     "bank_transfer": "Bank",
 }
 
-CATEGORY_ALIASES = {
-    "electricity": "Utilities",
-    "electricite": "Utilities",
-    "cash power": "Utilities",
-    "cashpower": "Utilities",
-    "water": "Utilities",
-    "eau": "Utilities",
-    "wasac": "Utilities",
-    "regideso": "Utilities",
-    "internet": "Utilities",
-    "wifi": "Utilities",
-    "canalbox": "Utilities",
-    "mtn internet": "Utilities",
-    "airtime": "Utilities",
-    "telephone": "Utilities",
-    "gas": "Utilities",
-    "gaz": "Utilities",
-    "cleaning": "Cleaning supplies",
-    "nettoyage": "Cleaning supplies",
-    "savon": "Cleaning supplies",
-    "soap": "Cleaning supplies",
-    "detergent": "Cleaning supplies",
-    "javel": "Cleaning supplies",
-    "maintenance": "Maintenance",
-    "reparation": "Maintenance",
-    "repair": "Maintenance",
-    "technicien": "Maintenance",
-    "packaging": "Packaging",
-    "emballage": "Packaging",
-    "boxes": "Packaging",
-    "boites": "Packaging",
-    "sachets": "Packaging",
-    "bags": "Packaging",
-    "labels": "Packaging",
-    "stickers": "Packaging",
-    "transport": "Transport",
-    "taxi": "Transport",
-    "carburant": "Transport",
-    "fuel": "Transport",
-    "essence": "Transport",
-    "diesel": "Transport",
-    "livraison": "Transport",
-    "delivery": "Transport",
-    "moto": "Transport",
-    "office": "Office supplies",
-    "office supplies": "Office supplies",
-    "bureau": "Office supplies",
-    "papeterie": "Office supplies",
-    "stationery": "Office supplies",
-    "printer ink": "Office supplies",
-    "papier": "Office supplies",
-    "marketing": "Marketing",
-    "ads": "Marketing",
-    "publicite": "Marketing",
-    "flyers": "Marketing",
-    "salary": "Payroll",
-    "salaries": "Payroll",
-    "salaire": "Payroll",
-    "salaires": "Payroll",
-    "payroll": "Payroll",
-    "advance": "Payroll",
-    "avance": "Payroll",
-    "rent": "Rent",
-    "loyer": "Rent",
+# ── category classification ──────────────────────────────────────────────────
+# Rules are tried top to bottom and the FIRST rule whose keywords appear in the
+# title wins, so the order below is the priority order:
+#   * "money / overhead" words beat product words, e.g. "Transport for flour"
+#     -> Transportation (not Flour), "Momo fees" -> Fees, "Nancy salary" -> Salary;
+#   * packaging / cleaning words beat product words ("Coffee cup" -> Supplies,
+#     "Milk powder" -> Supplies, not Coffee / Dairy);
+#   * Vegetables beat Fruits ("Fruits and vegetables" -> Vegetables).
+# Keywords are matched as WHOLE WORDS on the normalized title (lowercase, no
+# accents, punctuation ignored); a plural -s / -es is tolerated automatically.
+# Targets are the category names of the Transactions page. A rule whose target
+# is missing in the database is skipped and reported once at start-up, so edit
+# the names here if you rename a category.
+CATEGORY_RULES: list[tuple[str, tuple[str, ...]]] = [
+    ("Salary", (
+        "salary", "salaries", "salaire", "payroll", "wage", "wages",
+        "management accounting services",
+    )),
+    ("Transportation", (
+        "transport", "transportation", "moto", "motorbike", "motorcycle",
+        "motari", "taxi", "ticket", "bus", "fare", "parking", "delivery",
+        "livraison", "uber", "yego", "fuel", "petrol", "diesel", "carburant",
+        "location voiture", "car rental", "car hire", "flight", "shipping",
+    )),
+    ("Taxes", (
+        "tax", "impot", "vat", "tva", "license", "licence", "patente",
+        "rssb", "rra", "iqp", "cit", "social security",
+    )),
+    ("Fees", (
+        "momo fee", "mobile money fee", "momo charge", "bank fee",
+        "bank charge", "transaction fee", "withdrawal fee", "transfer fee",
+        "commission", "fee",
+    )),
+    ("Rent", ("rent", "loyer")),
+    ("Gas", ("gas", "gaz", "butane", "lpg")),
+    ("Services", (
+        "fumigation", "pest control", "printing", "print", "enseigne",
+        "panneau", "signage", "signboard", "vitrerie", "plumber", "plumbing",
+        "electrician", "maintenance", "repair", "reparation", "technician",
+        "technicien", "fridge", "hood", "spot light", "spotlight", "filter",
+        "borderie", "embroidery", "installation", "welding", "carpenter",
+    )),
+    ("Drinks", (
+        "inyange water", "sparkling water", "mineral water", "bottled water",
+        "drinking water", "water bottle", "vitalo", "coca", "coca cola",
+        "fanta", "sprite", "pepsi", "mirinda", "soda", "juice", "lemonade",
+        "beverage", "drink", "beer", "wine",
+    )),
+    ("Subscriptions", (
+        "electricity", "electricite", "cash power", "cashpower", "wifi",
+        "internet", "wasac", "regideso", "canalbox", "airtime", "telephone",
+        "subscription", "security", "water", "insurance", "assurance",
+        "hosting",
+    )),
+    # Packaging / cleaning / consumables: must come BEFORE the food groups
+    ("Supplies", (
+        "cup", "lid", "bag", "box", "cake board", "cake box", "packaging",
+        "envelope", "napkin", "serviette", "straw", "foil", "film",
+        "cling film", "baking sheet", "parchment", "ribbon", "ruban", "label",
+        "sticker", "decoration", "cap", "bouffant", "lighter", "soap",
+        "detergent", "javel", "bleach", "sponge", "glove", "cleaning",
+        "nettoyage", "savon", "tissue", "toilet paper", "paper", "papier",
+        "stationery", "printer ink", "ink", "toner", "milk powder",
+        "peanut butter",
+    )),
+    ("Meats", (
+        "meat", "chicken", "ham", "jambo", "sardine", "beef", "fillet",
+        "filet", "butcher", "pork", "sausage", "saucisse", "bacon", "fish",
+        "poisson", "salami", "lamb", "goat", "turkey", "mince", "viande",
+        "poulet", "boeuf", "porc", "jambon",
+    )),
+    ("Eggs", ("egg", "oeuf")),
+    ("Dairy", (
+        "milk", "butter", "cheese", "chesse", "yoghurt", "yogurt",
+        "youghurt", "yoghourt", "cream", "dairy", "dairies", "lait",
+        "beurre", "fromage", "yaourt", "cheddar", "mozzarella", "parmesan",
+        "feta", "gouda", "masaka", "ishyo",
+    )),
+    ("Coffee", ("coffee", "cafe", "espresso", "arabica", "nescafe")),
+    ("Vegetables", (
+        "vegetable", "legume", "lettuce", "dodo", "tomato", "tomate",
+        "potato", "patate", "ginger", "gingembre", "cucumber", "concombre",
+        "onion", "oignon", "carrot", "carotte", "garlic", "poivron",
+        "bell pepper", "green pepper", "cabbage", "chou", "spinach",
+        "epinard", "eggplant", "aubergine", "zucchini", "courgette", "celery",
+        "leek", "poireau", "beetroot", "pumpkin", "mushroom", "champignon",
+        "bean", "haricot", "peas", "nuts", "nut", "peanut", "sesame", "herbs",
+        "coriander", "parsley", "mint", "basil", "cassava", "manioc",
+    )),
+    ("Fruits", (
+        "fruit", "avocado", "avocat", "banana", "banane", "mango", "mangue",
+        "lemon", "citron", "lime", "apple", "pomme", "strawberry",
+        "strawberries", "berry", "berries", "fraise", "passion", "orange",
+        "raisin", "grape", "pineapple", "ananas", "papaya", "papaye",
+        "watermelon", "melon", "pear", "peach", "guava", "kiwi", "coconut",
+    )),
+    ("Flour", ("flour", "farine", "azam", "maize", "cornmeal", "semolina")),
+    # Pantry staples + known grocery suppliers (after the food groups so that
+    # e.g. "Vegetables groceries" stays Vegetables)
+    ("Supplies", (
+        "groceries", "grocery", "epicerie", "supply", "supplies", "achat",
+        "sugar", "sucre", "salt", "sel", "oil", "huile", "baking powder",
+        "yeast", "vanilla", "cinnamon", "honey", "miel", "ketchup",
+        "mustard", "moutarde", "mayonnaise", "sauce", "vinegar", "rice",
+        "riz", "custard", "chocolate", "cocoa", "cacao", "spice", "pepper",
+        "starch", "gelatin", "sprinkles", "icing", "food colouring",
+        "food coloring", "milimani", "henok", "hyab", "shyaka", "simba",
+        "delicenature", "wow market", "trendy", "kazuri", "onintsiky",
+        "kinazi",
+    )),
+]
+
+# Whole-title shortcuts (normalized title -> category) for things that are only
+# right when they are the ENTIRE title, e.g. "Toky change" must not match.
+EXACT_TITLES: dict[str, str] = {
+    "change": "Change",
+    "money change": "Change",
+    "cash change": "Change",
 }
 
-EXPENSE_MATCH_THRESHOLD = 0.75
+# Typo tolerance: when no rule matches, each word of 5+ letters is compared
+# with the single-word keywords above; >= this similarity counts as a hit
+# (e.g. "youghurt" -> yoghurt, "tomatos" -> tomato). Raise it if it misfires.
+TYPO_CUTOFF = 0.84
 
 
 # ── small helpers ─────────────────────────────────────────────────────────────
@@ -508,22 +565,60 @@ class ProductMatcher:
         return None, "unmatched", best_score
 
 
-class CategoryMatcher:
-    """Matches an expense name / description to a Category."""
+def _rule_regex(keywords) -> "re.Pattern":
+    """Whole-word regex for a keyword list; tolerates a plural -s / -es."""
+    alts = sorted({normalize(k) for k in keywords if normalize(k)},
+                  key=len, reverse=True)
+    return re.compile(
+        r"(?<![a-z0-9])(?:" + "|".join(re.escape(a) for a in alts)
+        + r")(?:s|es)?(?![a-z0-9])"
+    )
 
-    def __init__(self, categories: list[dict], aliases: dict[str, str],
-                 default_name: str = DEFAULT_CATEGORY):
+
+class CategoryMatcher:
+    """Classify an expense title into one of the database categories.
+
+    Order of attempts:
+      1. title equals a category name              -> "exact"
+      2. title is in EXACT_TITLES                  -> "alias"
+      3. first CATEGORY_RULES rule that matches    -> "rule"
+      4. misspelt keyword (similarity >= cutoff)   -> "typo"
+      5. nothing matched                           -> default category ("fallback")
+    """
+
+    def __init__(self, categories: list[dict], rules=None,
+                 default_name: str = DEFAULT_CATEGORY, exact_titles=None):
+        rules = CATEGORY_RULES if rules is None else rules
+        exact_titles = EXACT_TITLES if exact_titles is None else exact_titles
         self.categories = categories
-        self.by_norm: dict[str, dict] = {}
-        for c in categories:
-            self.by_norm[normalize(c["name"])] = c
-        self.alias_norm: dict[str, dict] = {}
-        for alias_key, cat_name in aliases.items():
-            target = self.by_norm.get(normalize(cat_name))
-            if target:
-                self.alias_norm[normalize(alias_key)] = target
+        self.by_norm: dict[str, dict] = {normalize(c["name"]): c for c in categories}
+
+        # Rules whose target category is not in the database are skipped, but
+        # remembered so the caller can warn (they used to vanish silently).
+        self.rules: list[tuple[dict, "re.Pattern"]] = []
+        self.missing_targets: list[str] = []
+        self._vocab: dict[str, dict] = {}
+        for target, keywords in rules:
+            cat = self.by_norm.get(normalize(target))
+            if cat is None:
+                if target not in self.missing_targets:
+                    self.missing_targets.append(target)
+                continue
+            self.rules.append((cat, _rule_regex(keywords)))
+            for kw in keywords:
+                nk = normalize(kw)
+                if " " not in nk and len(nk) >= 5:
+                    self._vocab.setdefault(nk, cat)   # earlier rule = higher priority
+
+        self.exact_titles: dict[str, dict] = {}
+        for title, cat_name in exact_titles.items():
+            cat = self.by_norm.get(normalize(cat_name))
+            if cat:
+                self.exact_titles[normalize(title)] = cat
+
         self.default_category = (
             self.by_norm.get(normalize(default_name))
+            or self.by_norm.get("others")
             or self.by_norm.get("other")
             or (categories[0] if categories else None)
         )
@@ -535,26 +630,24 @@ class CategoryMatcher:
             return self.default_category, "default_empty", 0.0
         if n in self.by_norm:
             return self.by_norm[n], "exact", 1.0
-        if n in self.alias_norm:
-            return self.alias_norm[n], "alias", 1.0
-        for alias_key, target in self.alias_norm.items():
-            if alias_key in n or n in alias_key:
-                return target, "alias_sub", 0.90
+        if n in self.exact_titles:
+            return self.exact_titles[n], "alias", 1.0
+        for cat, rx in self.rules:
+            if rx.search(n):
+                return cat, "rule", 1.0
         best, best_score = None, 0.0
-        n_sorted = " ".join(sorted(n.split()))
-        for c in self.categories:
-            cn = normalize(c["name"])
-            score = max(
-                SequenceMatcher(None, n, cn).ratio(),
-                SequenceMatcher(None, n_sorted, " ".join(sorted(cn.split()))).ratio(),
-            )
-            if score > best_score:
-                best, best_score = c, score
-        if best and best_score >= EXPENSE_MATCH_THRESHOLD:
-            return best, "fuzzy", best_score
+        for tok in n.split():
+            if len(tok) < 5 or tok.isdigit():
+                continue
+            for hit in get_close_matches(tok, self._vocab, n=1, cutoff=TYPO_CUTOFF):
+                score = SequenceMatcher(None, tok, hit).ratio()
+                if score > best_score:
+                    best, best_score = self._vocab[hit], score
+        if best:
+            return best, "typo", best_score
         if self.default_category:
-            return self.default_category, "fallback", best_score
-        return None, "unmatched", best_score
+            return self.default_category, "fallback", 0.0
+        return None, "unmatched", 0.0
 
 
 # ── shared catalog helpers ───────────────────────────────────────────────────
@@ -1065,7 +1158,10 @@ def import_expenses_file(
                 "duplicates_skipped": 0, "total_amount": 0.0,
                 "done": 0, "failed": 0}
 
-    matcher = CategoryMatcher(categories, CATEGORY_ALIASES, default_name=default_category)
+    matcher = CategoryMatcher(categories, CATEGORY_RULES, default_name=default_category)
+    if matcher.missing_targets:
+        print("    ! Category rules skipped (no such category in the database): "
+              + ", ".join(matcher.missing_targets))
 
     planned = []
     skipped_duplicates = []
@@ -1095,7 +1191,7 @@ def import_expenses_file(
                             cat_name, description="Auto-created during bulk import")
                     categories.append(cat)
                     matcher = CategoryMatcher(
-                        categories, CATEGORY_ALIASES, default_name=default_category)
+                        categories, CATEGORY_RULES, default_name=default_category)
                     match_type = "created"
                 except ApiError as exc:
                     print(f"    ! Failed to create category {cat_name!r}: {exc.detail}")
@@ -1136,14 +1232,15 @@ def import_expenses_file(
                 "notes": final_notes,
             }
 
-        tag = match_type if match_type not in ("fuzzy", "fallback") else f"{match_type} {score:.2f}"
+        tag = (f"typo {score:.2f}" if match_type == "typo"
+               else "fallback - review" if match_type == "fallback" else match_type)
         cat_display = cat["name"] if cat else "(none)"
         wallet_display = wallet["name"] if wallet else "(none)"
 
         print(f"    * {r['name']:<28} {r['amount']:>10} RWF  ->  "
               f"cat: {cat_display:<18} [{payment_method} / {wallet_display}]  [{tag}]")
 
-        planned.append({"row": r, "payload": payload,
+        planned.append({"row": r, "payload": payload, "match_type": match_type,
                         "cat_name": cat_display, "wallet_name": wallet_display})
         total_amount += r["amount"]
 
@@ -1182,6 +1279,8 @@ def import_expenses_file(
         "voided": skipped_voided,
         "zero": skipped_zero,
         "duplicates_skipped": len(skipped_duplicates),
+        "fallback_titles": sorted({i["row"]["name"] for i in planned
+                                   if i["match_type"] == "fallback"}),
         "done": len(done),
         "failed": len(failed),
     }
@@ -1439,6 +1538,10 @@ def main() -> int:
                   f"done: {r.get('done', '--')}  |  failed: {r.get('failed', '--')}")
             print(f"      voided: {r['voided']}  |  zero amount: {r['zero']}  |  "
                   f"duplicates skipped: {r['duplicates_skipped']}")
+            ft = r.get("fallback_titles") or []
+            if ft:
+                print(f"      no category rule hit ({len(ft)} title(s) -> default): "
+                      + ", ".join(ft[:10]) + (" ..." if len(ft) > 10 else ""))
             if r.get("failed"):
                 any_failed = True
 
@@ -1451,4 +1554,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-    
