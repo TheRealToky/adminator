@@ -97,9 +97,22 @@ INSUFFICIENT_RE = re.compile(
 
 # ── Production constants (from import_production.py) ─────────────────────────
 PRODUCTION_SHEET_NAME = "Production"
+# Legacy layout: A=Product, F=Production qty, G=Notes
 COL_PRODUCT = 0
 COL_PRODUCTION = 5
 COL_NOTES = 6
+# New 7-column layout:
+#   A=Date, B=Time, C=Product Name, D=Category, E=Unit Price, F=Qty, G=Total
+# (auto-detected from the header row: it contains "Product Name")
+NEW_COL_DATE = 0
+NEW_COL_TIME = 1
+NEW_COL_PRODUCT = 2
+NEW_COL_CATEGORY = 3
+NEW_COL_PRICE = 4
+NEW_COL_QTY = 5
+NEW_COL_TOTAL = 6
+_NEW_PROD_FORMAT_MARKER = "product name"
+_TOTAL_ROW_NAMES = {"total", "totals", "grand total", "total general"}
 
 PRODUCTION_PRODUCT_ALIASES = {
     "baguette au levain": "Sourdough baguette",
@@ -608,9 +621,9 @@ def resolve_wallet(
 
 # ── production helpers ────────────────────────────────────────────────────────
 def produce_with_topup(api: Api, product: dict, quantity: Decimal, date: str,
-                       materials: dict, log) -> dict:
+                       materials: dict, log, time: str | None = None) -> dict:
     """Record a production run, topping up any short raw material and retrying."""
-    notes = f"Imported from production sheet ({date})"
+    notes = f"Imported from production sheet ({date}{' ' + time if time else ''})"
     last_short = None
     for _ in range(MAX_TOPUP_ROUNDS):
         try:
@@ -715,19 +728,51 @@ def read_sales_orders(path: str, fallback_date: str, offset: str):
 
 
 def read_production_rows(path: str) -> list[dict]:
-    """Read the production sheet; mirrors import_production.read_rows."""
+    """Read the production sheet; mirrors import_production.read_rows.
+
+    Auto-detects the layout from the header row:
+      * new 7-column (Date, Time, Product Name, Category, Unit Price (RWF),
+        Qty, Total Value (RWF)) -- each row carries its own date/time;
+      * legacy (A=Product, F=Qty, G=Notes) -- date comes from --date.
+    """
     wb = openpyxl.load_workbook(path, data_only=True)
     ws = wb[PRODUCTION_SHEET_NAME] if PRODUCTION_SHEET_NAME in wb.sheetnames else wb.worksheets[0]
+    all_rows = list(ws.iter_rows(values_only=True))
+    if not all_rows:
+        return []
+
+    header = all_rows[0]
+    is_new = any(_NEW_PROD_FORMAT_MARKER in normalize(c) for c in header if c is not None)
+    print(f"    [format] detected {'new 7-column' if is_new else 'legacy'} layout")
+    col_product = NEW_COL_PRODUCT if is_new else COL_PRODUCT
+    col_qty = NEW_COL_QTY if is_new else COL_PRODUCTION
+
     rows = []
-    for i, r in enumerate(ws.iter_rows(values_only=True), start=1):
-        if i == 1:
-            continue  # header
-        name = r[COL_PRODUCT] if len(r) > COL_PRODUCT else None
+    for i, r in enumerate(all_rows[1:], start=2):  # row 1 is the header
+        name = r[col_product] if len(r) > col_product else None
         if name is None or str(name).strip() == "":
             continue
-        qty = r[COL_PRODUCTION] if len(r) > COL_PRODUCTION else None
-        note = r[COL_NOTES] if len(r) > COL_NOTES else None
-        rows.append({"row": i, "name": str(name).strip(), "qty": qty, "note": note})
+        if is_new and normalize(name) in _TOTAL_ROW_NAMES:
+            continue  # footer / summary row, not a product
+        qty = r[col_qty] if len(r) > col_qty else None
+
+        row_date = row_time = None
+        if is_new:
+            row_date = parse_date(r[NEW_COL_DATE] if len(r) > NEW_COL_DATE else None, "") or None
+            t = parse_time(r[NEW_COL_TIME] if len(r) > NEW_COL_TIME else None)
+            row_time = t[:5] if t else None
+            parts = []
+            for label, idx in (("cat", NEW_COL_CATEGORY), ("price", NEW_COL_PRICE),
+                               ("total", NEW_COL_TOTAL)):
+                v = r[idx] if len(r) > idx else None
+                if v:
+                    parts.append(f"{label}:{v}")
+            note = "; ".join(parts) if parts else None
+        else:
+            note = r[COL_NOTES] if len(r) > COL_NOTES else None
+
+        rows.append({"row": i, "name": str(name).strip(), "qty": qty, "note": note,
+                     "row_date": row_date, "row_time": row_time})
     return rows
 
 
@@ -949,8 +994,10 @@ def import_production_file(
             print(f"    ? UNMATCHED  {r['name']!r}  (best score {score:.2f}) -- skipped")
             continue
         tag = method if method != "fuzzy" else f"fuzzy {score:.2f}"
-        print(f"    * {r['name']:<26} -> {product['name']:<24} x{qty}  [{tag}]")
-        planned.append((r, product, qty))
+        # New format: the row carries its own date; legacy: use --date.
+        eff_date = r.get("row_date") or date
+        print(f"    * {r['name']:<26} -> {product['name']:<24} x{qty}  [{tag}]  date:{eff_date}")
+        planned.append((r, product, qty, eff_date))
 
     if limit:
         planned = planned[:limit]
@@ -958,9 +1005,10 @@ def import_production_file(
     done, failed = [], []
     if commit and planned:
         print("    Recording runs...")
-        for r, product, qty in planned:
+        for r, product, qty, eff_date in planned:
             try:
-                run = produce_with_topup(api, product, qty, date, materials, log=print)
+                run = produce_with_topup(api, product, qty, eff_date, materials,
+                                         log=print, time=r.get("row_time"))
                 done.append((product, qty, run))
                 print(f"    + {product['name']} x{qty}  (run {run['id'][:8]}, cost {run['cost']})")
             except (ApiError, RuntimeError) as exc:
@@ -1403,3 +1451,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+    

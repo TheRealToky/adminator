@@ -56,6 +56,7 @@ the standard library).
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import re
@@ -101,6 +102,8 @@ NEW_COL_TOTAL    = 6
 
 # Header keywords used to detect the new format (case-insensitive).
 _NEW_FORMAT_MARKER = "product name"
+# Footer rows in the new format that must not be treated as products.
+_TOTAL_ROW_NAMES = {"total", "totals", "grand total", "total general"}
 
 # Curated aliases: production-sheet name (normalized) -> exact catalog name.
 # Only the cases plain normalization + fuzzy matching can't resolve on their
@@ -141,6 +144,36 @@ def normalize(name: str) -> str:
     s = s.lower()
     s = re.sub(r"[^a-z0-9]+", " ", s)              # punctuation/() -> space
     return re.sub(r"\s+", " ", s).strip()
+
+
+def parse_date(val) -> str | None:
+    """Sheet Date cell -> 'YYYY-MM-DD' (None if blank/unparseable).
+
+    Handles real Excel dates plus text such as 2026-10-29, 2026/10/29 and
+    29/10/2026, so the API always receives an ISO date.
+    """
+    if isinstance(val, (datetime.date, datetime.datetime)):
+        return val.strftime("%Y-%m-%d")
+    if val is None:
+        return None
+    s = str(val).strip()
+    m = re.match(r"^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})", s)
+    if m:
+        return f"{int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    m = re.match(r"^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})", s)
+    if m:
+        return f"{int(m.group(3)):04d}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
+    return None
+
+
+def parse_time(val) -> str | None:
+    """Sheet Time cell -> 'HH:MM' (None if blank/unparseable)."""
+    if isinstance(val, (datetime.time, datetime.datetime)):
+        return val.strftime("%H:%M")
+    if val is None:
+        return None
+    m = re.match(r"^(\d{1,2}):(\d{2})", str(val).strip())
+    return f"{int(m.group(1)):02d}:{m.group(2)}" if m else None
 
 
 def parse_insufficient(detail: str | None):
@@ -309,9 +342,9 @@ def resolve_material(materials: dict[str, list[dict]], name: str, have: Decimal)
 
 # ── core: record one run, auto-fixing raw-material shortfalls ─────────────────
 def produce_with_topup(api: Api, product: dict, quantity: Decimal, date: str,
-                       materials: dict, log) -> dict:
+                       materials: dict, log, time: str | None = None) -> dict:
     """Record a production run, topping up any short raw material and retrying."""
-    notes = f"Imported from pastry_production.xlsx ({date})"
+    notes = f"Imported from pastry_production.xlsx ({date}{' ' + time if time else ''})"
     last_short = None
     for _ in range(MAX_TOPUP_ROUNDS):
         try:
@@ -346,7 +379,7 @@ def produce_with_topup(api: Api, product: dict, quantity: Decimal, date: str,
 def _detect_new_format(header_row) -> bool:
     """Return True if the header looks like the new 7-column layout."""
     return any(
-        _NEW_FORMAT_MARKER in str(cell).lower()
+        _NEW_FORMAT_MARKER in normalize(cell)
         for cell in header_row
         if cell is not None
     )
@@ -379,19 +412,16 @@ def read_rows(path: str) -> list[dict]:
         name = r[col_product] if len(r) > col_product else None
         if name is None or str(name).strip() == "":
             continue
+        if is_new_fmt and normalize(name) in _TOTAL_ROW_NAMES:
+            continue                       # footer / summary row, not a product
         qty = r[col_production] if len(r) > col_production else None
 
-        # In the new format we can also pull the date from the row itself.
+        # In the new format we can also pull date + time from the row itself.
         row_date: str | None = None
-        if is_new_fmt and col_date is not None:
-            raw_date = r[col_date] if len(r) > col_date else None
-            if raw_date is not None:
-                # openpyxl may return a datetime object or a string.
-                import datetime as _dt
-                if isinstance(raw_date, (_dt.date, _dt.datetime)):
-                    row_date = raw_date.strftime("%Y-%m-%d")
-                else:
-                    row_date = str(raw_date).strip()
+        row_time: str | None = None
+        if is_new_fmt:
+            row_date = parse_date(r[col_date] if len(r) > col_date else None)
+            row_time = parse_time(r[NEW_COL_TIME] if len(r) > NEW_COL_TIME else None)
 
         # Build a human-readable note from the extra columns when available.
         note: str | None = None
@@ -413,6 +443,7 @@ def read_rows(path: str) -> list[dict]:
             "qty":      qty,
             "note":     note,
             "row_date": row_date,   # None for legacy format
+            "row_time": row_time,   # None for legacy format
         })
     return rows
 
@@ -479,7 +510,7 @@ def main() -> int:
         for r, product, qty, effective_date in planned:
             try:
                 run = produce_with_topup(api, product, qty, effective_date, materials,
-                                         log=print)
+                                         log=print, time=r.get("row_time"))
                 done.append((product, qty, run))
                 print(f"  ✓ {product['name']} ×{qty}  (run {run['id'][:8]}, cost {run['cost']})")
             except (ApiError, RuntimeError) as exc:
